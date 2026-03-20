@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: wedding-share2
+    name: wedding-memories
     env: node
     plan: free
     buildCommand: npm install
