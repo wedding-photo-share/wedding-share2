@@ -1,5 +1,5 @@
 const express = require('express');
-const { S3Client, PutObjectCommand, PutBucketCorsCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, PutBucketCorsCommand, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
@@ -125,6 +125,52 @@ app.get('/api/qrcode', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'QRコード生成失敗' });
   }
+});
+
+// 写真一覧取得エンドポイント
+app.get('/api/photos', async (req, res) => {
+  try {
+    const listCommand = new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: 'uploads/',
+    });
+    const data = await s3Client.send(listCommand);
+
+    const objects = (data.Contents || []).filter(obj => !obj.Key.endsWith('/'));
+    objects.sort((a, b) => b.LastModified - a.LastModified);
+
+    const photos = await Promise.all(objects.map(async (obj) => {
+      const viewUrl = await getSignedUrl(s3Client, new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: obj.Key,
+      }), { expiresIn: 3600 });
+
+      const downloadUrl = await getSignedUrl(s3Client, new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: obj.Key,
+        ResponseContentDisposition: `attachment; filename="${path.basename(obj.Key)}"`,
+      }), { expiresIn: 3600 });
+
+      return {
+        key: obj.Key,
+        filename: path.basename(obj.Key),
+        viewUrl,
+        downloadUrl,
+        lastModified: obj.LastModified,
+        size: obj.Size,
+      };
+    }));
+
+    res.json({ photos });
+  } catch (err) {
+    console.error('写真一覧取得エラー:', err);
+    res.status(500).json({ error: '写真一覧の取得に失敗しました' });
+  }
+});
+
+// ギャラリーページ
+app.get('/gallery', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
 });
 
 // 管理画面

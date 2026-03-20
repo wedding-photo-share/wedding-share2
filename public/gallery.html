@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>みんなの写真 - Wedding Photo Share</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #fff0f5 0%, #fce4ec 50%, #f3e5f5 100%);
+      min-height: 100vh;
+    }
+
+    header {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header h1 { font-size: 1.2rem; color: #c2185b; }
+    header p { font-size: 0.8rem; color: #aaa; margin-top: 2px; }
+
+    .header-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn-upload {
+      padding: 7px 18px;
+      background: linear-gradient(135deg, #e91e63, #c2185b);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn-refresh {
+      padding: 7px 18px;
+      background: rgba(194,24,91,0.1);
+      color: #c2185b;
+      border: 1px solid #c2185b;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ローディング */
+    #loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #c2185b;
+      font-size: 0.95rem;
+    }
+
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #f8bbd0;
+      border-top-color: #c2185b;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 空状態 */
+    #empty {
+      display: none;
+      text-align: center;
+      padding: 60px 20px;
+      color: #aaa;
+    }
+
+    #empty .icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* グリッド */
+    #photo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 3px;
+      padding: 3px;
+    }
+
+    @media (min-width: 600px) {
+      #photo-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; }
+    }
+
+    .photo-item {
+      aspect-ratio: 1;
+      overflow: hidden;
+      position: relative;
+      background: #f8bbd0;
+      cursor: pointer;
+    }
+
+    .photo-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.2s;
+      display: block;
+    }
+
+    .photo-item:active img { transform: scale(0.95); }
+
+    .photo-item .dl-btn {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .photo-item:hover .dl-btn,
+    .photo-item:focus-within .dl-btn {
+      opacity: 1;
+    }
+
+    /* モバイルではダウンロードボタン常時表示 */
+    @media (hover: none) {
+      .photo-item .dl-btn { opacity: 1; }
+    }
+
+    /* 写真数バッジ */
+    #photo-count {
+      text-align: center;
+      padding: 12px;
+      font-size: 0.8rem;
+      color: #aaa;
+    }
+
+    /* ライトボックス */
+    #lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #lightbox.open { display: flex; }
+
+    #lightbox-img {
+      max-width: 95vw;
+      max-height: 80vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    #lightbox-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #lightbox-actions {
+      margin-top: 16px;
+      display: flex;
+      gap: 12px;
+    }
+
+    #lightbox-download {
+      padding: 10px 28px;
+      background: linear-gradient(135deg, #e91e63, #c2185b);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    /* ナビ矢印 */
+    #lightbox-prev, #lightbox-next {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #lightbox-prev { left: 12px; }
+    #lightbox-next { right: 12px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📸 みんなの写真</h1>
+  <p id="photo-count-header">読み込み中...</p>
+  <div class="header-actions">
+    <a href="/" class="btn-upload">＋ 写真を追加</a>
+    <button class="btn-refresh" onclick="loadPhotos()">更新</button>
+  </div>
+</header>
+
+<div id="loading">
+  <div class="spinner"></div>
+  写真を読み込んでいます...
+</div>
+
+<div id="empty">
+  <div class="icon">🌸</div>
+  <p>まだ写真がありません</p>
+  <p style="margin-top:8px;font-size:0.85rem">最初の写真を送ってみましょう！</p>
+</div>
+
+<div id="photo-grid"></div>
+
+<!-- ライトボックス -->
+<div id="lightbox">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button id="lightbox-prev" onclick="prevPhoto()">‹</button>
+  <img id="lightbox-img" src="" alt="">
+  <button id="lightbox-next" onclick="nextPhoto()">›</button>
+  <div id="lightbox-actions">
+    <a id="lightbox-download" href="" download="">⬇ ダウンロード</a>
+  </div>
+</div>
+
+<script>
+  let photos = [];
+  let currentIndex = 0;
+
+  async function loadPhotos() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('photo-grid').innerHTML = '';
+    document.getElementById('empty').style.display = 'none';
+    document.getElementById('photo-count-header').textContent = '読み込み中...';
+
+    try {
+      const res = await fetch('/api/photos');
+      const data = await res.json();
+      photos = data.photos || [];
+    } catch (e) {
+      photos = [];
+    }
+
+    document.getElementById('loading').style.display = 'none';
+
+    if (photos.length === 0) {
+      document.getElementById('empty').style.display = 'block';
+      document.getElementById('photo-count-header').textContent = '写真はまだありません';
+      return;
+    }
+
+    document.getElementById('photo-count-header').textContent = `${photos.length} 枚の写真`;
+
+    const grid = document.getElementById('photo-grid');
+    photos.forEach((photo, index) => {
+      const item = document.createElement('div');
+      item.className = 'photo-item';
+
+      const img = document.createElement('img');
+      img.src = photo.viewUrl;
+      img.alt = photo.filename;
+      img.loading = 'lazy';
+      img.onclick = () => openLightbox(index);
+
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'dl-btn';
+      dlBtn.title = 'ダウンロード';
+      dlBtn.innerHTML = '⬇';
+      dlBtn.onclick = (e) => {
+        e.stopPropagation();
+        downloadPhoto(photo);
+      };
+
+      item.appendChild(img);
+      item.appendChild(dlBtn);
+      grid.appendChild(item);
+    });
+  }
+
+  function openLightbox(index) {
+    currentIndex = index;
+    updateLightbox();
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function updateLightbox() {
+    const photo = photos[currentIndex];
+    document.getElementById('lightbox-img').src = photo.viewUrl;
+    document.getElementById('lightbox-download').href = photo.downloadUrl;
+    document.getElementById('lightbox-download').download = photo.filename;
+    document.getElementById('lightbox-prev').style.visibility = currentIndex > 0 ? 'visible' : 'hidden';
+    document.getElementById('lightbox-next').style.visibility = currentIndex < photos.length - 1 ? 'visible' : 'hidden';
+  }
+
+  function prevPhoto() {
+    if (currentIndex > 0) { currentIndex--; updateLightbox(); }
+  }
+
+  function nextPhoto() {
+    if (currentIndex < photos.length - 1) { currentIndex++; updateLightbox(); }
+  }
+
+  function downloadPhoto(photo) {
+    const a = document.createElement('a');
+    a.href = photo.downloadUrl;
+    a.download = photo.filename;
+    a.click();
+  }
+
+  // キーボード操作
+  document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('lightbox').classList.contains('open')) return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') prevPhoto();
+    if (e.key === 'ArrowRight') nextPhoto();
+  });
+
+  // 背景タップで閉じる
+  document.getElementById('lightbox').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('lightbox')) closeLightbox();
+  });
+
+  loadPhotos();
+</script>
+</body>
+</html>
