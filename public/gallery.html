@@ -240,7 +240,7 @@
   <p id="photo-count-header">読み込み中...</p>
   <div class="header-actions">
     <a href="/" class="btn-upload">＋ 写真を追加</a>
-    <button class="btn-refresh" onclick="loadPhotos()">更新</button>
+    <button class="btn-refresh" onclick="loadPhotos(true)">更新</button>
   </div>
 </header>
 
@@ -272,14 +272,15 @@
   let photos = [];
   let currentIndex = 0;
 
-  async function loadPhotos() {
+  async function loadPhotos(forceRefresh = false) {
     document.getElementById('loading').style.display = 'block';
     document.getElementById('photo-grid').innerHTML = '';
     document.getElementById('empty').style.display = 'none';
     document.getElementById('photo-count-header').textContent = '読み込み中...';
 
     try {
-      const res = await fetch('/api/photos');
+      const url = forceRefresh ? '/api/photos?refresh=1' : '/api/photos';
+      const res = await fetch(url);
       const data = await res.json();
       photos = data.photos || [];
     } catch (e) {

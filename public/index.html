@@ -426,6 +426,11 @@
 
     progressText.textContent = `完了: ${completed} 枚成功${failed > 0 ? ` / ${failed} 枚失敗` : ''}`;
 
+    // 写真が追加されたのでギャラリーキャッシュを破棄
+    if (completed > 0) {
+      fetch('/api/invalidate-cache', { method: 'POST' }).catch(() => {});
+    }
+
     setTimeout(() => {
       if (completed > 0) {
         uploadSection.style.display = 'none';

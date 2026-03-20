@@ -127,8 +127,21 @@ app.get('/api/qrcode', async (req, res) => {
   }
 });
 
+// 写真一覧キャッシュ（presigned URLの有効期限3600秒に合わせ50分でキャッシュ）
+const PHOTO_CACHE_TTL = 50 * 60 * 1000;
+let photoCache = null;
+let photoCacheTime = 0;
+
 // 写真一覧取得エンドポイント
 app.get('/api/photos', async (req, res) => {
+  // 新しい写真が追加された後も反映されるよう、強制更新クエリをサポート
+  const forceRefresh = req.query.refresh === '1';
+  const now = Date.now();
+
+  if (!forceRefresh && photoCache && (now - photoCacheTime) < PHOTO_CACHE_TTL) {
+    return res.json({ photos: photoCache, cached: true });
+  }
+
   try {
     const listCommand = new ListObjectsV2Command({
       Bucket: BUCKET_NAME,
@@ -161,11 +174,20 @@ app.get('/api/photos', async (req, res) => {
       };
     }));
 
-    res.json({ photos });
+    photoCache = photos;
+    photoCacheTime = now;
+    res.json({ photos, cached: false });
   } catch (err) {
     console.error('写真一覧取得エラー:', err);
     res.status(500).json({ error: '写真一覧の取得に失敗しました' });
   }
+});
+
+// 写真アップロード後にキャッシュを破棄
+app.post('/api/invalidate-cache', (req, res) => {
+  photoCache = null;
+  photoCacheTime = 0;
+  res.json({ ok: true });
 });
 
 // ギャラリーページ
