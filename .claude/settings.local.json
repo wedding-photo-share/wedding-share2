@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(aws s3 ls s3://wedding-share-app2)",
+      "Bash(aws configure list)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

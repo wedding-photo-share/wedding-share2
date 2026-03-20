@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理画面 - Wedding Photo Share</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+
+    .container {
+      text-align: center;
+      padding: 40px 24px;
+      max-width: 520px;
+      width: 100%;
+    }
+
+    h1 { font-size: 1.6rem; margin-bottom: 6px; letter-spacing: 0.05em; }
+
+    .subtitle { color: #a0aec0; font-size: 0.9rem; margin-bottom: 32px; }
+
+    /* トンネルステータス */
+    .tunnel-status {
+      background: rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 14px 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.85rem;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.starting { background: #f6ad55; animation: pulse 1.2s infinite; }
+    .status-dot.ready    { background: #68d391; }
+    .status-dot.error    { background: #fc8181; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* URL入力 */
+    .url-section {
+      background: rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .url-section label {
+      display: block;
+      font-size: 0.8rem;
+      color: #a0aec0;
+      text-align: left;
+      margin-bottom: 8px;
+    }
+
+    .url-input-row { display: flex; gap: 8px; }
+
+    .url-input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.1);
+      color: white;
+      font-size: 0.9rem;
+    }
+
+    .url-input-row input::placeholder { color: #718096; }
+
+    .url-input-row button {
+      padding: 10px 16px;
+      background: #e91e63;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* QRコード */
+    .qr-section {
+      background: rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 28px 24px;
+    }
+
+    #qr-label {
+      font-size: 0.85rem;
+      color: #a0aec0;
+      margin-bottom: 20px;
+      min-height: 1.2em;
+    }
+
+    #qr-container {
+      display: inline-block;
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    #qr-img { display: block; width: 240px; height: 240px; }
+
+    #qr-url {
+      margin-top: 16px;
+      font-size: 0.8rem;
+      color: #68d391;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      margin-top: 12px;
+      padding: 8px 20px;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+
+    .copy-btn:active { background: rgba(255,255,255,0.2); }
+
+    #copied-msg {
+      display: none;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: #68d391;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>💒 QRコード管理画面</h1>
+  <p class="subtitle">ゲストにQRコードを見せてください</p>
+
+  <!-- トンネルステータス -->
+  <div class="tunnel-status" id="tunnel-status-bar">
+    <div class="status-dot starting" id="status-dot"></div>
+    <span id="status-text">Cloudflare Tunnel 起動中...</span>
+  </div>
+
+  <!-- URL入力（手動変更用） -->
+  <div class="url-section">
+    <label>公開URL（自動取得されます）</label>
+    <div class="url-input-row">
+      <input type="text" id="url-input" placeholder="トンネル起動待ち..." readonly />
+      <button onclick="generateQR()">QR生成</button>
+    </div>
+  </div>
+
+  <div class="qr-section">
+    <p id="qr-label">Cloudflare Tunnel の起動を待っています...</p>
+    <div id="qr-container" style="display:none">
+      <img id="qr-img" src="" alt="QR Code">
+    </div>
+    <div id="qr-url"></div>
+    <button class="copy-btn" id="copy-btn" style="display:none" onclick="copyUrl()">URLをコピー</button>
+    <div id="copied-msg">コピーしました！</div>
+  </div>
+</div>
+
+<script>
+  let pollingTimer = null;
+  let tunnelReady = false;
+
+  async function pollTunnelStatus() {
+    try {
+      const res = await fetch('/api/tunnel-status');
+      const data = await res.json();
+
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      const input = document.getElementById('url-input');
+
+      if (data.status === 'ready' && data.url) {
+        dot.className = 'status-dot ready';
+        text.textContent = `Cloudflare Tunnel 接続中: ${data.url}`;
+        input.value = data.url;
+        input.removeAttribute('readonly');
+
+        if (!tunnelReady) {
+          tunnelReady = true;
+          clearInterval(pollingTimer);
+          generateQR(data.url);
+        }
+      } else if (data.status === 'error') {
+        dot.className = 'status-dot error';
+        text.textContent = 'トンネル起動に失敗しました。手動でURLを入力してください。';
+        input.removeAttribute('readonly');
+        input.placeholder = 'https://...';
+        clearInterval(pollingTimer);
+      }
+      // 'starting' の場合はそのまま待機
+    } catch (e) {
+      // サーバー未起動などは無視
+    }
+  }
+
+  async function generateQR(initialUrl) {
+    const url = initialUrl || document.getElementById('url-input').value.trim();
+    if (!url) return;
+
+    document.getElementById('qr-label').textContent = 'QRコード生成中...';
+    document.getElementById('qr-container').style.display = 'none';
+    document.getElementById('copy-btn').style.display = 'none';
+
+    try {
+      const res = await fetch(`/api/qrcode?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+
+      document.getElementById('qr-img').src = data.qrcode;
+      document.getElementById('qr-container').style.display = 'inline-block';
+      document.getElementById('qr-url').textContent = data.url;
+      document.getElementById('qr-label').textContent = 'スマホでスキャンしてください';
+      document.getElementById('copy-btn').style.display = 'inline-block';
+    } catch (err) {
+      document.getElementById('qr-label').textContent = 'QRコード生成に失敗しました';
+    }
+  }
+
+  function copyUrl() {
+    const url = document.getElementById('qr-url').textContent;
+    navigator.clipboard.writeText(url).then(() => {
+      const msg = document.getElementById('copied-msg');
+      msg.style.display = 'block';
+      setTimeout(() => { msg.style.display = 'none'; }, 2000);
+    });
+  }
+
+  document.getElementById('url-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') generateQR();
+  });
+
+  // 起動直後からポーリング開始（1秒ごと）
+  pollTunnelStatus();
+  pollingTimer = setInterval(pollTunnelStatus, 1000);
+</script>
+
+</body>
+</html>

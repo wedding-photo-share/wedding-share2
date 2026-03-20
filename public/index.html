@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Wedding Photo Share</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #fff0f5 0%, #fce4ec 50%, #f3e5f5 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+      text-align: center;
+      padding: 20px 16px 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      color: #c2185b;
+      letter-spacing: 0.03em;
+    }
+
+    header p {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    main {
+      width: 100%;
+      max-width: 480px;
+      padding: 24px 16px;
+      flex: 1;
+    }
+
+    /* ファイル選択エリア */
+    .drop-area {
+      border: 2px dashed #f48fb1;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.7);
+      text-align: center;
+      padding: 40px 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .drop-area:active {
+      background: rgba(255,255,255,0.95);
+      border-color: #c2185b;
+    }
+
+    .drop-area .icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .drop-area p {
+      color: #c2185b;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .drop-area small {
+      display: block;
+      color: #aaa;
+      margin-top: 6px;
+      font-size: 0.8rem;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* プレビュー */
+    #preview-section {
+      display: none;
+      margin-top: 20px;
+    }
+
+    #preview-section h2 {
+      font-size: 0.95rem;
+      color: #666;
+      margin-bottom: 12px;
+    }
+
+    #preview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .preview-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preview-item .remove-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      font-size: 14px;
+      line-height: 22px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .preview-item .overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(194, 24, 91, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .preview-item.uploading .overlay {
+      opacity: 1;
+    }
+
+    .preview-item.done .overlay {
+      opacity: 1;
+      background: rgba(56, 142, 60, 0.6);
+    }
+
+    .preview-item.error .overlay {
+      opacity: 1;
+      background: rgba(198, 40, 40, 0.6);
+    }
+
+    .overlay-icon {
+      color: white;
+      font-size: 1.5rem;
+    }
+
+    /* アップロードボタン */
+    #upload-btn {
+      display: none;
+      width: 100%;
+      margin-top: 20px;
+      padding: 16px;
+      background: linear-gradient(135deg, #e91e63, #c2185b);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(194, 24, 91, 0.35);
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    #upload-btn:active {
+      transform: scale(0.97);
+      box-shadow: 0 2px 8px rgba(194, 24, 91, 0.3);
+    }
+
+    #upload-btn:disabled {
+      background: #ccc;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    /* 進捗バー */
+    #progress-section {
+      display: none;
+      margin-top: 16px;
+    }
+
+    #progress-bar-wrap {
+      background: #f8bbd0;
+      border-radius: 50px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    #progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #e91e63, #c2185b);
+      border-radius: 50px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+
+    #progress-text {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #c2185b;
+      margin-top: 8px;
+    }
+
+    /* 完了メッセージ */
+    #success-section {
+      display: none;
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    #success-section .big-icon {
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+
+    #success-section h2 {
+      color: #c2185b;
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+    }
+
+    #success-section p {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    #again-btn {
+      margin-top: 24px;
+      padding: 12px 32px;
+      background: transparent;
+      color: #c2185b;
+      border: 2px solid #c2185b;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      color: #ccc;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>💒 Wedding Photo Share</h1>
+  <p>思い出の写真をシェアしてください</p>
+</header>
+
+<main>
+  <!-- アップロードエリア -->
+  <div id="upload-section">
+    <div class="drop-area" onclick="document.getElementById('fileInput').click()">
+      <div class="icon">📷</div>
+      <p>写真を選択する</p>
+      <small>複数枚まとめて選択できます</small>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+
+    <div id="preview-section">
+      <h2 id="preview-count"></h2>
+      <div id="preview-grid"></div>
+    </div>
+
+    <button id="upload-btn">送信する</button>
+
+    <div id="progress-section">
+      <div id="progress-bar-wrap">
+        <div id="progress-bar"></div>
+      </div>
+      <div id="progress-text">アップロード中...</div>
+    </div>
+  </div>
+
+  <!-- 完了画面 -->
+  <div id="success-section">
+    <div class="big-icon">🎉</div>
+    <h2>送信完了！</h2>
+    <p>素敵な写真をありがとうございます</p>
+    <button id="again-btn" onclick="resetPage()">続けて送る</button>
+  </div>
+</main>
+
+<footer>Wedding Photo Share</footer>
+
+<script>
+  const fileInput = document.getElementById('fileInput');
+  const previewSection = document.getElementById('preview-section');
+  const previewGrid = document.getElementById('preview-grid');
+  const previewCount = document.getElementById('preview-count');
+  const uploadBtn = document.getElementById('upload-btn');
+  const progressSection = document.getElementById('progress-section');
+  const progressBar = document.getElementById('progress-bar');
+  const progressText = document.getElementById('progress-text');
+  const successSection = document.getElementById('success-section');
+  const uploadSection = document.getElementById('upload-section');
+
+  let selectedFiles = [];
+
+  fileInput.addEventListener('change', (e) => {
+    const newFiles = Array.from(e.target.files);
+    selectedFiles = [...selectedFiles, ...newFiles];
+    renderPreviews();
+    fileInput.value = '';
+  });
+
+  function renderPreviews() {
+    previewGrid.innerHTML = '';
+    if (selectedFiles.length === 0) {
+      previewSection.style.display = 'none';
+      uploadBtn.style.display = 'none';
+      return;
+    }
+
+    previewSection.style.display = 'block';
+    uploadBtn.style.display = 'block';
+    previewCount.textContent = `選択中: ${selectedFiles.length} 枚`;
+
+    selectedFiles.forEach((file, index) => {
+      const item = document.createElement('div');
+      item.className = 'preview-item';
+      item.id = `preview-${index}`;
+
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = '×';
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+      };
+
+      const overlay = document.createElement('div');
+      overlay.className = 'overlay';
+      const overlayIcon = document.createElement('span');
+      overlayIcon.className = 'overlay-icon';
+      overlay.appendChild(overlayIcon);
+
+      item.appendChild(img);
+      item.appendChild(removeBtn);
+      item.appendChild(overlay);
+      previewGrid.appendChild(item);
+    });
+  }
+
+  uploadBtn.addEventListener('click', async () => {
+    if (selectedFiles.length === 0) return;
+
+    uploadBtn.disabled = true;
+    progressSection.style.display = 'block';
+
+    let completed = 0;
+    let failed = 0;
+
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      const item = document.getElementById(`preview-${i}`);
+      const overlay = item.querySelector('.overlay');
+      const overlayIcon = item.querySelector('.overlay-icon');
+
+      item.classList.add('uploading');
+      overlayIcon.textContent = '⏳';
+
+      try {
+        // Presigned URL取得
+        const res = await fetch('/api/presigned-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: file.name, contentType: file.type || 'image/jpeg' }),
+        });
+
+        if (!res.ok) throw new Error('URL取得失敗');
+        const { url } = await res.json();
+
+        // S3に直接アップロード
+        const uploadRes = await fetch(url, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type || 'image/jpeg' },
+        });
+
+        if (!uploadRes.ok) throw new Error('アップロード失敗');
+
+        item.classList.remove('uploading');
+        item.classList.add('done');
+        overlayIcon.textContent = '✓';
+        completed++;
+      } catch (err) {
+        item.classList.remove('uploading');
+        item.classList.add('error');
+        overlayIcon.textContent = '✗';
+        failed++;
+        console.error(err);
+      }
+
+      const progress = Math.round(((i + 1) / selectedFiles.length) * 100);
+      progressBar.style.width = progress + '%';
+      progressText.textContent = `${i + 1} / ${selectedFiles.length} 枚処理中...`;
+    }
+
+    progressText.textContent = `完了: ${completed} 枚成功${failed > 0 ? ` / ${failed} 枚失敗` : ''}`;
+
+    setTimeout(() => {
+      if (completed > 0) {
+        uploadSection.style.display = 'none';
+        successSection.style.display = 'block';
+      }
+      uploadBtn.disabled = false;
+    }, 800);
+  });
+
+  function resetPage() {
+    selectedFiles = [];
+    renderPreviews();
+    progressSection.style.display = 'none';
+    progressBar.style.width = '0%';
+    uploadSection.style.display = 'block';
+    successSection.style.display = 'none';
+  }
+</script>
+
+</body>
+</html>
