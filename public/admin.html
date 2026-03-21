@@ -4,18 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理画面 - Wedding Photo Share</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0d0d0d;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(150deg, #1a0818 0%, #0e0514 50%, #160820 100%);
+      background-attachment: fixed;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #f5f5f5;
+      color: #f0e8ec;
       padding: 32px 16px;
     }
 
@@ -24,35 +27,42 @@
       max-width: 420px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
     }
 
     /* ── Wordmark ─────────────────── */
     .wordmark {
       text-align: center;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     .wordmark h1 {
-      font-size: 1.15rem;
-      font-weight: 700;
+      font-family: 'Playfair Display', Georgia, serif;
       font-style: italic;
-      letter-spacing: 0.1px;
-      color: #f5f5f5;
+      font-size: 1.5rem;
+      font-weight: 400;
+      background: linear-gradient(135deg, #f7a8c4, #e07aaa, #c05890);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.3px;
     }
 
     .wordmark p {
-      font-size: 0.76rem;
-      color: #666;
-      margin-top: 4px;
+      font-size: 0.75rem;
+      color: #7a6070;
+      margin-top: 5px;
+      letter-spacing: 0.5px;
     }
 
     /* ── Card ─────────────────────── */
     .card {
-      background: #1a1a1a;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(247, 168, 196, 0.18);
+      border-radius: 16px;
       padding: 18px 20px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
 
     /* ── Tunnel status ────────────── */
@@ -70,8 +80,8 @@
     }
 
     .status-dot.starting { background: #f59e0b; animation: pulse 1.2s infinite; }
-    .status-dot.ready    { background: #22c55e; }
-    .status-dot.error    { background: #ef4444; }
+    .status-dot.ready    { background: #86efac; }
+    .status-dot.error    { background: #f87171; }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
@@ -80,15 +90,15 @@
 
     .status-text {
       font-size: 0.82rem;
-      color: #999;
+      color: #a08898;
     }
 
     /* ── URL input ────────────────── */
     .field-label {
-      font-size: 0.72rem;
-      color: #555;
-      margin-bottom: 8px;
-      letter-spacing: 0.3px;
+      font-size: 0.7rem;
+      color: #7a6070;
+      margin-bottom: 10px;
+      letter-spacing: 0.6px;
       text-transform: uppercase;
     }
 
@@ -99,30 +109,32 @@
 
     .url-row input {
       flex: 1;
-      padding: 10px 12px;
-      background: #111;
-      border: 1px solid #2a2a2a;
-      border-radius: 8px;
-      color: #f5f5f5;
+      padding: 10px 13px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(247,168,196,0.15);
+      border-radius: 10px;
+      color: #f0e8ec;
       font-size: 0.84rem;
     }
 
-    .url-row input::placeholder { color: #444; }
+    .url-row input::placeholder { color: #5a4050; }
+
     .url-row input:focus {
       outline: none;
-      border-color: #444;
+      border-color: rgba(247,168,196,0.4);
     }
 
     .url-row button {
       padding: 10px 16px;
-      background: #f5f5f5;
-      color: #0d0d0d;
+      background: linear-gradient(135deg, #f7a8c4, #c05890);
+      color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 10px;
       font-size: 0.82rem;
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
+      box-shadow: 0 3px 12px rgba(180,80,130,0.35);
       transition: opacity 0.15s;
     }
 
@@ -131,10 +143,11 @@
     /* ── QR section ───────────────── */
     .qr-label {
       font-size: 0.8rem;
-      color: #666;
+      color: #7a6070;
       text-align: center;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
       min-height: 1.1em;
+      letter-spacing: 0.3px;
     }
 
     .qr-wrapper {
@@ -146,45 +159,46 @@
     #qr-container {
       display: none;
       background: #fff;
-      border-radius: 12px;
-      padding: 14px;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 8px 32px rgba(180,80,130,0.25);
     }
 
     #qr-img {
       display: block;
-      width: 220px;
-      height: 220px;
+      width: 224px;
+      height: 224px;
     }
 
     #qr-url {
       margin-top: 14px;
-      font-size: 0.75rem;
-      color: #22c55e;
+      font-size: 0.74rem;
+      color: #f7a8c4;
       word-break: break-all;
       text-align: center;
     }
 
     .copy-btn {
       margin-top: 14px;
-      padding: 8px 22px;
+      padding: 9px 24px;
       background: transparent;
-      color: #f5f5f5;
-      border: 1px solid #2a2a2a;
-      border-radius: 6px;
+      color: #f0e8ec;
+      border: 1px solid rgba(247,168,196,0.25);
+      border-radius: 50px;
       font-size: 0.78rem;
       cursor: pointer;
       display: none;
-      transition: border-color 0.15s;
+      transition: border-color 0.15s, background 0.15s;
     }
 
-    .copy-btn:hover { border-color: #555; }
-    .copy-btn:active { background: #1f1f1f; }
+    .copy-btn:hover { border-color: rgba(247,168,196,0.5); background: rgba(247,168,196,0.06); }
+    .copy-btn:active { background: rgba(247,168,196,0.12); }
 
     #copied-msg {
       display: none;
       margin-top: 8px;
-      font-size: 0.76rem;
-      color: #22c55e;
+      font-size: 0.75rem;
+      color: #86efac;
     }
   </style>
 </head>

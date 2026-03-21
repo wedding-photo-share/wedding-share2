@@ -4,20 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Wedding Photo Share</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #fafafa;
-      --surface: #fff;
-      --border: #dbdbdb;
-      --text: #262626;
-      --muted: #8e8e8e;
+      --text: #2d1a25;
+      --muted: #a08898;
+      --accent: linear-gradient(135deg, #f7a8c4 0%, #e07aaa 50%, #c05890 100%);
+      --accent-solid: #d06898;
+      --shadow: rgba(180, 80, 130, 0.13);
+      --glass: rgba(255, 255, 255, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.65);
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(150deg, #fff0f5 0%, #ffeee0 50%, #ece6fa 100%);
+      background-attachment: fixed;
       min-height: 100vh;
       color: var(--text);
       display: flex;
@@ -26,24 +31,28 @@
 
     /* ── Header ─────────────────── */
     header {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--glass-border);
       text-align: center;
-      padding: 14px 16px 12px;
+      padding: 18px 16px 14px;
     }
 
     header h1 {
-      font-size: 1.05rem;
-      font-weight: 700;
+      font-family: 'Playfair Display', Georgia, serif;
       font-style: italic;
-      letter-spacing: 0.2px;
+      font-size: 1.45rem;
+      font-weight: 400;
       color: var(--text);
+      letter-spacing: 0.3px;
     }
 
     header p {
-      font-size: 0.75rem;
+      font-size: 0.76rem;
       color: var(--muted);
-      margin-top: 3px;
+      margin-top: 4px;
+      letter-spacing: 0.5px;
     }
 
     /* ── Main ───────────────────── */
@@ -52,40 +61,47 @@
       max-width: 480px;
       width: 100%;
       margin: 0 auto;
-      padding: 24px 16px 32px;
+      padding: 28px 18px 36px;
     }
 
     /* ── Drop area ──────────────── */
     .drop-area {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      box-shadow: 0 8px 32px var(--shadow);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 56px 24px;
       cursor: pointer;
-      transition: background 0.12s;
+      transition: transform 0.15s, box-shadow 0.15s;
     }
 
-    .drop-area:active { background: #f5f5f5; }
+    .drop-area:active {
+      transform: scale(0.98);
+      box-shadow: 0 4px 16px var(--shadow);
+    }
 
     .camera-ring {
-      width: 60px;
-      height: 60px;
-      border: 2px solid var(--text);
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
+      background: var(--accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 16px rgba(180, 80, 130, 0.3);
     }
 
     .camera-ring svg {
-      width: 26px;
-      height: 26px;
-      stroke: var(--text);
+      width: 28px;
+      height: 28px;
+      stroke: #fff;
       fill: none;
       stroke-width: 1.5;
       stroke-linecap: round;
@@ -93,7 +109,7 @@
     }
 
     .drop-area p {
-      font-size: 0.92rem;
+      font-size: 0.96rem;
       font-weight: 600;
       color: var(--text);
     }
@@ -101,7 +117,7 @@
     .drop-area small {
       font-size: 0.76rem;
       color: var(--muted);
-      margin-top: 5px;
+      margin-top: 6px;
     }
 
     #fileInput { display: none; }
@@ -109,27 +125,30 @@
     /* ── Preview ────────────────── */
     #preview-section {
       display: none;
-      margin-top: 2px;
+      margin-top: 14px;
     }
 
     #preview-section h2 {
       font-size: 0.76rem;
       color: var(--muted);
       font-weight: 400;
-      margin: 10px 0 6px;
+      margin-bottom: 8px;
+      letter-spacing: 0.3px;
     }
 
     #preview-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 2px;
+      gap: 3px;
+      border-radius: 14px;
+      overflow: hidden;
     }
 
     .preview-item {
       position: relative;
       aspect-ratio: 1;
       overflow: hidden;
-      background: #efefef;
+      background: rgba(255,255,255,0.4);
     }
 
     .preview-item img {
@@ -143,7 +162,7 @@
       position: absolute;
       top: 5px;
       right: 5px;
-      background: rgba(0,0,0,0.55);
+      background: rgba(0,0,0,0.5);
       color: #fff;
       border: none;
       border-radius: 50%;
@@ -166,58 +185,68 @@
       transition: opacity 0.2s;
     }
 
-    .preview-item.uploading .overlay { opacity: 1; background: rgba(0,0,0,0.38); }
-    .preview-item.done      .overlay { opacity: 1; background: rgba(0,0,0,0.18); }
-    .preview-item.error     .overlay { opacity: 1; background: rgba(176,0,0,0.48); }
+    .preview-item.uploading .overlay { opacity: 1; background: rgba(180,80,130,0.4); }
+    .preview-item.done      .overlay { opacity: 1; background: rgba(80,160,80,0.35); }
+    .preview-item.error     .overlay { opacity: 1; background: rgba(180,0,0,0.4); }
 
-    .overlay-icon { color: #fff; font-size: 1.3rem; }
+    .overlay-icon { color: #fff; font-size: 1.4rem; }
 
     /* ── Upload button ──────────── */
     #upload-btn {
       display: none;
       width: 100%;
-      margin-top: 12px;
-      padding: 13px;
-      background: var(--text);
+      margin-top: 14px;
+      padding: 15px;
+      background: var(--accent);
       color: #fff;
       border: none;
-      border-radius: 8px;
-      font-size: 0.9rem;
+      border-radius: 50px;
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
-      letter-spacing: 0.1px;
-      transition: opacity 0.15s;
+      letter-spacing: 0.5px;
+      box-shadow: 0 6px 20px rgba(180, 80, 130, 0.35);
+      transition: transform 0.12s, box-shadow 0.12s;
     }
 
-    #upload-btn:active   { opacity: 0.82; }
-    #upload-btn:disabled { background: #b2b2b2; cursor: not-allowed; }
+    #upload-btn:active {
+      transform: scale(0.97);
+      box-shadow: 0 3px 10px rgba(180, 80, 130, 0.3);
+    }
+
+    #upload-btn:disabled {
+      background: linear-gradient(135deg, #e0c0cc, #c8a0b4);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
 
     /* ── Progress ───────────────── */
     #progress-section {
       display: none;
-      margin-top: 14px;
+      margin-top: 16px;
     }
 
     #progress-bar-wrap {
-      background: #e8e8e8;
-      border-radius: 2px;
-      height: 2px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 50px;
+      height: 4px;
       overflow: hidden;
     }
 
     #progress-bar {
       height: 100%;
-      background: var(--text);
-      border-radius: 2px;
+      background: var(--accent);
+      border-radius: 50px;
       transition: width 0.3s;
       width: 0%;
     }
 
     #progress-text {
       text-align: center;
-      font-size: 0.75rem;
+      font-size: 0.76rem;
       color: var(--muted);
-      margin-top: 9px;
+      margin-top: 10px;
+      letter-spacing: 0.3px;
     }
 
     /* ── Success ────────────────── */
@@ -228,19 +257,20 @@
     }
 
     .check-ring {
-      width: 68px;
-      height: 68px;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
-      background: var(--text);
+      background: var(--accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 22px;
+      margin: 0 auto 24px;
+      box-shadow: 0 6px 24px rgba(180, 80, 130, 0.35);
     }
 
     .check-ring svg {
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       stroke: #fff;
       fill: none;
       stroke-width: 2.5;
@@ -249,31 +279,33 @@
     }
 
     #success-section h2 {
-      font-size: 1rem;
-      font-weight: 700;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-style: italic;
+      font-size: 1.4rem;
+      font-weight: 400;
       color: var(--text);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
 
     #success-section p {
-      font-size: 0.84rem;
+      font-size: 0.85rem;
       color: var(--muted);
     }
 
     #again-btn {
-      margin-top: 22px;
-      padding: 10px 28px;
+      margin-top: 24px;
+      padding: 12px 32px;
       background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.86rem;
+      color: var(--accent-solid);
+      border: 1.5px solid var(--accent-solid);
+      border-radius: 50px;
+      font-size: 0.88rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.12s;
+      transition: background 0.15s;
     }
 
-    #again-btn:active { background: #f0f0f0; }
+    #again-btn:active { background: rgba(180,80,130,0.08); }
 
     .gallery-link-small {
       display: block;
@@ -285,8 +317,10 @@
 
     /* ── Footer ─────────────────── */
     footer {
-      border-top: 1px solid var(--border);
-      background: var(--surface);
+      border-top: 1px solid var(--glass-border);
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       text-align: center;
       padding: 14px;
     }
@@ -341,7 +375,7 @@
     <div class="check-ring">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <h2>シェアしました</h2>
+    <h2>Thank you !</h2>
     <p>素敵な写真をありがとうございます</p>
     <button id="again-btn" onclick="resetPage()">続けて送る</button>
     <a href="/gallery" class="gallery-link-small">みんなの写真を見る →</a>
