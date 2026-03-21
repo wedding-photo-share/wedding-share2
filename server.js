@@ -7,12 +7,29 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
+
+// セキュリティヘッダー
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 const BUCKET_NAME = 'wedding-share-app2';
 const REGION = 'ap-northeast-1';
 const PORT = process.env.PORT || 3000;
+
+const ALLOWED_CONTENT_TYPES = new Set([
+  'image/jpeg', 'image/jpg', 'image/png', 'image/gif',
+  'image/webp', 'image/heic', 'image/heif', 'image/bmp', 'image/tiff',
+]);
+const ALLOWED_EXTENSIONS = new Set([
+  '.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.bmp', '.tiff', '.tif',
+]);
 
 const s3Client = new S3Client({ region: REGION });
 
@@ -95,7 +112,15 @@ app.post('/api/presigned-url', async (req, res) => {
       return res.status(400).json({ error: 'filename と contentType が必要です' });
     }
 
-    const ext = path.extname(filename);
+    // ファイルタイプ検証（画像のみ許可）
+    if (!ALLOWED_CONTENT_TYPES.has(contentType.toLowerCase())) {
+      return res.status(400).json({ error: '画像ファイルのみアップロードできます' });
+    }
+    const ext = path.extname(filename).toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext)) {
+      return res.status(400).json({ error: '対応していないファイル形式です' });
+    }
+
     const key = `uploads/${new Date().toISOString().slice(0, 10)}/${uuidv4()}${ext}`;
 
     const command = new PutObjectCommand({

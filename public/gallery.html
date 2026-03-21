@@ -5,106 +5,138 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>みんなの写真 - Wedding Photo Share</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #fff0f5 0%, #fce4ec 50%, #f3e5f5 100%);
-      min-height: 100vh;
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --border: #dbdbdb;
+      --text: #262626;
+      --muted: #8e8e8e;
     }
 
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    /* ── Header ─────────────────── */
     header {
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(10px);
-      padding: 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px 12px;
       text-align: center;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
       position: sticky;
       top: 0;
       z-index: 10;
     }
 
-    header h1 { font-size: 1.2rem; color: #c2185b; }
-    header p { font-size: 0.8rem; color: #aaa; margin-top: 2px; }
+    header h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      font-style: italic;
+      color: var(--text);
+    }
+
+    header p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
 
     .header-actions {
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 8px;
       margin-top: 10px;
     }
 
     .btn-upload {
-      padding: 7px 18px;
-      background: linear-gradient(135deg, #e91e63, #c2185b);
-      color: white;
+      padding: 7px 16px;
+      background: var(--text);
+      color: #fff;
       border: none;
-      border-radius: 50px;
-      font-size: 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
       display: inline-block;
+      transition: opacity 0.15s;
     }
+
+    .btn-upload:active { opacity: 0.8; }
 
     .btn-refresh {
-      padding: 7px 18px;
-      background: rgba(194,24,91,0.1);
-      color: #c2185b;
-      border: 1px solid #c2185b;
-      border-radius: 50px;
-      font-size: 0.85rem;
+      padding: 7px 16px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.8rem;
       font-weight: 600;
       cursor: pointer;
+      transition: background 0.12s;
     }
 
-    /* ローディング */
+    .btn-refresh:active { background: #f0f0f0; }
+
+    /* ── Loading ─────────────────── */
     #loading {
       text-align: center;
-      padding: 60px 20px;
-      color: #c2185b;
-      font-size: 0.95rem;
+      padding: 64px 20px;
+      color: var(--muted);
+      font-size: 0.86rem;
     }
 
     .spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid #f8bbd0;
-      border-top-color: #c2185b;
+      width: 32px;
+      height: 32px;
+      border: 2px solid #e8e8e8;
+      border-top-color: var(--text);
       border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+      animation: spin 0.75s linear infinite;
       margin: 0 auto 16px;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* 空状態 */
+    /* ── Empty state ─────────────── */
     #empty {
       display: none;
       text-align: center;
-      padding: 60px 20px;
-      color: #aaa;
+      padding: 72px 20px;
+      color: var(--muted);
     }
 
-    #empty .icon { font-size: 3rem; margin-bottom: 12px; }
+    #empty .icon {
+      font-size: 2.4rem;
+      margin-bottom: 14px;
+      opacity: 0.5;
+    }
 
-    /* グリッド */
+    #empty p { font-size: 0.88rem; }
+    #empty p + p { margin-top: 6px; font-size: 0.8rem; }
+
+    /* ── Photo grid ──────────────── */
     #photo-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 3px;
-      padding: 3px;
+      gap: 2px;
+      background: var(--surface);
     }
 
     @media (min-width: 600px) {
-      #photo-grid { grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; }
+      #photo-grid { grid-template-columns: repeat(4, 1fr); }
     }
 
     .photo-item {
       aspect-ratio: 1;
       overflow: hidden;
       position: relative;
-      background: #f8bbd0;
+      background: #efefef;
       cursor: pointer;
     }
 
@@ -112,55 +144,45 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.2s;
       display: block;
+      transition: transform 0.2s;
     }
 
-    .photo-item:active img { transform: scale(0.95); }
+    .photo-item:hover img { transform: scale(1.03); }
+    .photo-item:active img { transform: scale(0.97); }
 
     .photo-item .dl-btn {
       position: absolute;
-      bottom: 5px;
-      right: 5px;
-      background: rgba(0,0,0,0.5);
-      color: white;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.52);
+      color: #fff;
       border: none;
       border-radius: 50%;
       width: 30px;
       height: 30px;
-      font-size: 14px;
+      font-size: 13px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       opacity: 0;
-      transition: opacity 0.2s;
+      transition: opacity 0.18s;
     }
 
     .photo-item:hover .dl-btn,
-    .photo-item:focus-within .dl-btn {
-      opacity: 1;
-    }
+    .photo-item:focus-within .dl-btn { opacity: 1; }
 
-    /* モバイルではダウンロードボタン常時表示 */
     @media (hover: none) {
       .photo-item .dl-btn { opacity: 1; }
     }
 
-    /* 写真数バッジ */
-    #photo-count {
-      text-align: center;
-      padding: 12px;
-      font-size: 0.8rem;
-      color: #aaa;
-    }
-
-    /* ライトボックス */
+    /* ── Lightbox ────────────────── */
     #lightbox {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.92);
+      background: rgba(0,0,0,0.94);
       z-index: 100;
       flex-direction: column;
       align-items: center;
@@ -171,93 +193,97 @@
 
     #lightbox-img {
       max-width: 95vw;
-      max-height: 80vh;
+      max-height: 78vh;
       object-fit: contain;
-      border-radius: 8px;
+      border-radius: 4px;
     }
 
     #lightbox-close {
       position: absolute;
       top: 16px;
       right: 16px;
-      background: rgba(255,255,255,0.15);
-      color: white;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
       border: none;
       border-radius: 50%;
       width: 40px;
       height: 40px;
-      font-size: 20px;
+      font-size: 18px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background 0.15s;
     }
 
-    #lightbox-actions {
-      margin-top: 16px;
-      display: flex;
-      gap: 12px;
-    }
+    #lightbox-close:hover { background: rgba(255,255,255,0.22); }
+
+    #lightbox-actions { margin-top: 18px; }
 
     #lightbox-download {
       padding: 10px 28px;
-      background: linear-gradient(135deg, #e91e63, #c2185b);
-      color: white;
+      background: #fff;
+      color: var(--text);
       border: none;
-      border-radius: 50px;
-      font-size: 0.9rem;
+      border-radius: 8px;
+      font-size: 0.86rem;
       font-weight: 600;
       cursor: pointer;
       text-decoration: none;
+      display: inline-block;
+      transition: opacity 0.15s;
     }
 
-    /* ナビ矢印 */
+    #lightbox-download:active { opacity: 0.8; }
+
     #lightbox-prev, #lightbox-next {
       position: absolute;
       top: 50%;
       transform: translateY(-50%);
-      background: rgba(255,255,255,0.15);
-      color: white;
+      background: rgba(255,255,255,0.12);
+      color: #fff;
       border: none;
       border-radius: 50%;
-      width: 44px;
-      height: 44px;
+      width: 42px;
+      height: 42px;
       font-size: 20px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: background 0.15s;
     }
 
-    #lightbox-prev { left: 12px; }
-    #lightbox-next { right: 12px; }
+    #lightbox-prev:hover, #lightbox-next:hover { background: rgba(255,255,255,0.22); }
+    #lightbox-prev { left: 14px; }
+    #lightbox-next { right: 14px; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>📸 みんなの写真</h1>
+  <h1>Wedding Photo Share</h1>
   <p id="photo-count-header">読み込み中...</p>
   <div class="header-actions">
-    <a href="/" class="btn-upload">＋ 写真を追加</a>
+    <a href="/" class="btn-upload">+ 写真を追加</a>
     <button class="btn-refresh" onclick="loadPhotos(true)">更新</button>
   </div>
 </header>
 
 <div id="loading">
   <div class="spinner"></div>
-  写真を読み込んでいます...
+  読み込み中...
 </div>
 
 <div id="empty">
   <div class="icon">🌸</div>
   <p>まだ写真がありません</p>
-  <p style="margin-top:8px;font-size:0.85rem">最初の写真を送ってみましょう！</p>
+  <p>最初の写真をシェアしてみましょう</p>
 </div>
 
 <div id="photo-grid"></div>
 
-<!-- ライトボックス -->
+<!-- Lightbox -->
 <div id="lightbox">
   <button id="lightbox-close" onclick="closeLightbox()">✕</button>
   <button id="lightbox-prev" onclick="prevPhoto()">‹</button>
@@ -359,7 +385,6 @@
     a.click();
   }
 
-  // キーボード操作
   document.addEventListener('keydown', (e) => {
     if (!document.getElementById('lightbox').classList.contains('open')) return;
     if (e.key === 'Escape') closeLightbox();
@@ -367,7 +392,6 @@
     if (e.key === 'ArrowRight') nextPhoto();
   });
 
-  // 背景タップで閉じる
   document.getElementById('lightbox').addEventListener('click', (e) => {
     if (e.target === document.getElementById('lightbox')) closeLightbox();
   });

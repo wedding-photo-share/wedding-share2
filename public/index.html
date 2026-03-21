@@ -5,126 +5,151 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Wedding Photo Share</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #fff0f5 0%, #fce4ec 50%, #f3e5f5 100%);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    :root {
+      --bg: #fafafa;
+      --surface: #fff;
+      --border: #dbdbdb;
+      --text: #262626;
+      --muted: #8e8e8e;
     }
 
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ─────────────────── */
     header {
-      width: 100%;
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(10px);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
       text-align: center;
-      padding: 20px 16px 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      padding: 14px 16px 12px;
     }
 
     header h1 {
-      font-size: 1.5rem;
-      color: #c2185b;
-      letter-spacing: 0.03em;
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-style: italic;
+      letter-spacing: 0.2px;
+      color: var(--text);
     }
 
     header p {
-      font-size: 0.85rem;
-      color: #888;
-      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 3px;
     }
 
+    /* ── Main ───────────────────── */
     main {
-      width: 100%;
-      max-width: 480px;
-      padding: 24px 16px;
       flex: 1;
+      max-width: 480px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 16px 32px;
     }
 
-    /* ファイル選択エリア */
+    /* ── Drop area ──────────────── */
     .drop-area {
-      border: 2px dashed #f48fb1;
-      border-radius: 16px;
-      background: rgba(255,255,255,0.7);
-      text-align: center;
-      padding: 40px 20px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 56px 24px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.12s;
     }
 
-    .drop-area:active {
-      background: rgba(255,255,255,0.95);
-      border-color: #c2185b;
+    .drop-area:active { background: #f5f5f5; }
+
+    .camera-ring {
+      width: 60px;
+      height: 60px;
+      border: 2px solid var(--text);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
     }
 
-    .drop-area .icon {
-      font-size: 3rem;
-      margin-bottom: 12px;
+    .camera-ring svg {
+      width: 26px;
+      height: 26px;
+      stroke: var(--text);
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .drop-area p {
-      color: #c2185b;
-      font-size: 1rem;
+      font-size: 0.92rem;
       font-weight: 600;
+      color: var(--text);
     }
 
     .drop-area small {
-      display: block;
-      color: #aaa;
-      margin-top: 6px;
-      font-size: 0.8rem;
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-top: 5px;
     }
 
-    #fileInput {
-      display: none;
-    }
+    #fileInput { display: none; }
 
-    /* プレビュー */
+    /* ── Preview ────────────────── */
     #preview-section {
       display: none;
-      margin-top: 20px;
+      margin-top: 2px;
     }
 
     #preview-section h2 {
-      font-size: 0.95rem;
-      color: #666;
-      margin-bottom: 12px;
+      font-size: 0.76rem;
+      color: var(--muted);
+      font-weight: 400;
+      margin: 10px 0 6px;
     }
 
     #preview-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
+      gap: 2px;
     }
 
     .preview-item {
       position: relative;
       aspect-ratio: 1;
-      border-radius: 10px;
       overflow: hidden;
+      background: #efefef;
     }
 
     .preview-item img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
     }
 
     .preview-item .remove-btn {
       position: absolute;
-      top: 4px;
-      right: 4px;
-      background: rgba(0,0,0,0.5);
-      color: white;
+      top: 5px;
+      right: 5px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
       border: none;
       border-radius: 50%;
       width: 22px;
       height: 22px;
-      font-size: 14px;
-      line-height: 22px;
+      font-size: 13px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -134,7 +159,6 @@
     .preview-item .overlay {
       position: absolute;
       inset: 0;
-      background: rgba(194, 24, 91, 0.6);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -142,136 +166,156 @@
       transition: opacity 0.2s;
     }
 
-    .preview-item.uploading .overlay {
-      opacity: 1;
-    }
+    .preview-item.uploading .overlay { opacity: 1; background: rgba(0,0,0,0.38); }
+    .preview-item.done      .overlay { opacity: 1; background: rgba(0,0,0,0.18); }
+    .preview-item.error     .overlay { opacity: 1; background: rgba(176,0,0,0.48); }
 
-    .preview-item.done .overlay {
-      opacity: 1;
-      background: rgba(56, 142, 60, 0.6);
-    }
+    .overlay-icon { color: #fff; font-size: 1.3rem; }
 
-    .preview-item.error .overlay {
-      opacity: 1;
-      background: rgba(198, 40, 40, 0.6);
-    }
-
-    .overlay-icon {
-      color: white;
-      font-size: 1.5rem;
-    }
-
-    /* アップロードボタン */
+    /* ── Upload button ──────────── */
     #upload-btn {
       display: none;
       width: 100%;
-      margin-top: 20px;
-      padding: 16px;
-      background: linear-gradient(135deg, #e91e63, #c2185b);
-      color: white;
+      margin-top: 12px;
+      padding: 13px;
+      background: var(--text);
+      color: #fff;
       border: none;
-      border-radius: 50px;
-      font-size: 1.05rem;
-      font-weight: 700;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(194, 24, 91, 0.35);
-      transition: transform 0.1s, box-shadow 0.1s;
+      letter-spacing: 0.1px;
+      transition: opacity 0.15s;
     }
 
-    #upload-btn:active {
-      transform: scale(0.97);
-      box-shadow: 0 2px 8px rgba(194, 24, 91, 0.3);
-    }
+    #upload-btn:active   { opacity: 0.82; }
+    #upload-btn:disabled { background: #b2b2b2; cursor: not-allowed; }
 
-    #upload-btn:disabled {
-      background: #ccc;
-      box-shadow: none;
-      cursor: not-allowed;
-    }
-
-    /* 進捗バー */
+    /* ── Progress ───────────────── */
     #progress-section {
       display: none;
-      margin-top: 16px;
+      margin-top: 14px;
     }
 
     #progress-bar-wrap {
-      background: #f8bbd0;
-      border-radius: 50px;
-      height: 10px;
+      background: #e8e8e8;
+      border-radius: 2px;
+      height: 2px;
       overflow: hidden;
     }
 
     #progress-bar {
       height: 100%;
-      background: linear-gradient(90deg, #e91e63, #c2185b);
-      border-radius: 50px;
+      background: var(--text);
+      border-radius: 2px;
       transition: width 0.3s;
       width: 0%;
     }
 
     #progress-text {
       text-align: center;
-      font-size: 0.85rem;
-      color: #c2185b;
-      margin-top: 8px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 9px;
     }
 
-    /* 完了メッセージ */
+    /* ── Success ────────────────── */
     #success-section {
       display: none;
       text-align: center;
-      padding: 40px 20px;
+      padding: 52px 24px;
     }
 
-    #success-section .big-icon {
-      font-size: 4rem;
-      margin-bottom: 16px;
+    .check-ring {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 22px;
+    }
+
+    .check-ring svg {
+      width: 30px;
+      height: 30px;
+      stroke: #fff;
+      fill: none;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     #success-section h2 {
-      color: #c2185b;
-      font-size: 1.3rem;
-      margin-bottom: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
     }
 
     #success-section p {
-      color: #888;
-      font-size: 0.9rem;
+      font-size: 0.84rem;
+      color: var(--muted);
     }
 
     #again-btn {
-      margin-top: 24px;
-      padding: 12px 32px;
+      margin-top: 22px;
+      padding: 10px 28px;
       background: transparent;
-      color: #c2185b;
-      border: 2px solid #c2185b;
-      border-radius: 50px;
-      font-size: 0.95rem;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.86rem;
       font-weight: 600;
       cursor: pointer;
+      transition: background 0.12s;
     }
 
+    #again-btn:active { background: #f0f0f0; }
+
+    .gallery-link-small {
+      display: block;
+      margin-top: 18px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    /* ── Footer ─────────────────── */
     footer {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
       text-align: center;
-      padding: 16px;
-      color: #ccc;
-      font-size: 0.75rem;
+      padding: 14px;
+    }
+
+    footer a {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>💒 Wedding Photo Share</h1>
+  <h1>Wedding Photo Share</h1>
   <p>思い出の写真をシェアしてください</p>
 </header>
 
 <main>
-  <!-- アップロードエリア -->
+  <!-- Upload section -->
   <div id="upload-section">
     <div class="drop-area" onclick="document.getElementById('fileInput').click()">
-      <div class="icon">📷</div>
+      <div class="camera-ring">
+        <svg viewBox="0 0 24 24">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+      </div>
       <p>写真を選択する</p>
       <small>複数枚まとめて選択できます</small>
     </div>
@@ -282,7 +326,7 @@
       <div id="preview-grid"></div>
     </div>
 
-    <button id="upload-btn">送信する</button>
+    <button id="upload-btn">シェアする</button>
 
     <div id="progress-section">
       <div id="progress-bar-wrap">
@@ -292,18 +336,20 @@
     </div>
   </div>
 
-  <!-- 完了画面 -->
+  <!-- Success screen -->
   <div id="success-section">
-    <div class="big-icon">🎉</div>
-    <h2>送信完了！</h2>
+    <div class="check-ring">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2>シェアしました</h2>
     <p>素敵な写真をありがとうございます</p>
     <button id="again-btn" onclick="resetPage()">続けて送る</button>
-    <a href="/gallery" style="display:block;margin-top:12px;color:#c2185b;font-size:0.9rem;font-weight:600;text-decoration:none;">📸 みんなの写真を見る →</a>
+    <a href="/gallery" class="gallery-link-small">みんなの写真を見る →</a>
   </div>
 </main>
 
 <footer>
-  <a href="/gallery" style="color:#c2185b;text-decoration:none;font-size:0.9rem;font-weight:600;">📸 みんなの写真を見る</a>
+  <a href="/gallery">みんなの写真を見る</a>
 </footer>
 
 <script>
@@ -388,7 +434,6 @@
       overlayIcon.textContent = '⏳';
 
       try {
-        // Presigned URL取得
         const res = await fetch('/api/presigned-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -398,7 +443,6 @@
         if (!res.ok) throw new Error('URL取得失敗');
         const { url } = await res.json();
 
-        // S3に直接アップロード
         const uploadRes = await fetch(url, {
           method: 'PUT',
           body: file,
@@ -426,7 +470,6 @@
 
     progressText.textContent = `完了: ${completed} 枚成功${failed > 0 ? ` / ${failed} 枚失敗` : ''}`;
 
-    // 写真が追加されたのでギャラリーキャッシュを破棄
     if (completed > 0) {
       fetch('/api/invalidate-cache', { method: 'POST' }).catch(() => {});
     }
