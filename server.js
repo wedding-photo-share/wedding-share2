@@ -99,6 +99,12 @@ async function configureBucketCors() {
   }
 }
 
+// ヘルスチェック（GitHub Pages の待機画面がポーリング）
+app.get('/health', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json({ ok: true });
+});
+
 // トンネルURL取得エンドポイント（管理画面がポーリング）
 app.get('/api/tunnel-status', (req, res) => {
   res.json({ status: tunnelStatus, url: tunnelUrl });
