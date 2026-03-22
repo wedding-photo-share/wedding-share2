@@ -5,23 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Wedding Photo Share</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --text: #2d1a25;
-      --muted: #a08898;
-      --accent: linear-gradient(135deg, #f7a8c4 0%, #e07aaa 50%, #c05890 100%);
-      --accent-solid: #d06898;
-      --shadow: rgba(180, 80, 130, 0.13);
-      --glass: rgba(255, 255, 255, 0.72);
-      --glass-border: rgba(255, 255, 255, 0.65);
+      --grad: linear-gradient(135deg, #7c3aed 0%, #db2777 55%, #ea580c 100%);
+      --grad-soft: linear-gradient(150deg, #f3e8ff 0%, #fce7f3 50%, #fff0e6 100%);
+      --text: #1e0a2e;
+      --muted: #9d72b8;
+      --glass: rgba(255, 255, 255, 0.82);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --shadow: rgba(124, 58, 237, 0.16);
+      --glow: rgba(219, 39, 119, 0.32);
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(150deg, #fff0f5 0%, #ffeee0 50%, #ece6fa 100%);
+      font-family: 'Poppins', -apple-system, sans-serif;
+      background: var(--grad-soft);
       background-attachment: fixed;
       min-height: 100vh;
       color: var(--text);
@@ -36,23 +37,25 @@
       -webkit-backdrop-filter: blur(24px);
       border-bottom: 1px solid var(--glass-border);
       text-align: center;
-      padding: 18px 16px 14px;
+      padding: 20px 16px 14px;
     }
 
     header h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      font-size: 1.45rem;
-      font-weight: 400;
-      color: var(--text);
-      letter-spacing: 0.3px;
+      font-size: 1.55rem;
+      font-weight: 800;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
     }
 
     header p {
       font-size: 0.76rem;
       color: var(--muted);
-      margin-top: 4px;
-      letter-spacing: 0.5px;
+      margin-top: 5px;
+      font-weight: 400;
     }
 
     /* ── Main ───────────────────── */
@@ -69,55 +72,56 @@
       background: var(--glass);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--glass-border);
-      border-radius: 20px;
-      box-shadow: 0 8px 32px var(--shadow);
+      border: 1.5px solid var(--glass-border);
+      border-radius: 24px;
+      box-shadow: 0 8px 32px var(--shadow), 0 0 0 0 transparent;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 56px 24px;
+      padding: 52px 24px;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
+      transition: transform 0.18s, box-shadow 0.18s;
     }
 
     .drop-area:active {
-      transform: scale(0.98);
+      transform: scale(0.97);
       box-shadow: 0 4px 16px var(--shadow);
     }
 
     .camera-ring {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: var(--accent);
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      background: var(--grad);
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      box-shadow: 0 4px 16px rgba(180, 80, 130, 0.3);
+      box-shadow: 0 8px 24px var(--glow);
     }
 
     .camera-ring svg {
-      width: 28px;
-      height: 28px;
+      width: 30px;
+      height: 30px;
       stroke: #fff;
       fill: none;
-      stroke-width: 1.5;
+      stroke-width: 1.8;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
 
-    .drop-area p {
-      font-size: 0.96rem;
-      font-weight: 600;
+    .drop-area h2 {
+      font-size: 1rem;
+      font-weight: 700;
       color: var(--text);
+      margin-bottom: 4px;
     }
 
     .drop-area small {
       font-size: 0.76rem;
       color: var(--muted);
-      margin-top: 6px;
+      font-weight: 400;
     }
 
     #fileInput { display: none; }
@@ -129,18 +133,17 @@
     }
 
     #preview-section h2 {
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       color: var(--muted);
-      font-weight: 400;
+      font-weight: 500;
       margin-bottom: 8px;
-      letter-spacing: 0.3px;
     }
 
     #preview-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 3px;
-      border-radius: 14px;
+      border-radius: 18px;
       overflow: hidden;
     }
 
@@ -162,13 +165,13 @@
       position: absolute;
       top: 5px;
       right: 5px;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.55);
       color: #fff;
       border: none;
       border-radius: 50%;
       width: 22px;
       height: 22px;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -185,9 +188,9 @@
       transition: opacity 0.2s;
     }
 
-    .preview-item.uploading .overlay { opacity: 1; background: rgba(180,80,130,0.4); }
-    .preview-item.done      .overlay { opacity: 1; background: rgba(80,160,80,0.35); }
-    .preview-item.error     .overlay { opacity: 1; background: rgba(180,0,0,0.4); }
+    .preview-item.uploading .overlay { opacity: 1; background: rgba(124,58,237,0.4); }
+    .preview-item.done      .overlay { opacity: 1; background: rgba(22,163,74,0.4); }
+    .preview-item.error     .overlay { opacity: 1; background: rgba(220,38,38,0.4); }
 
     .overlay-icon { color: #fff; font-size: 1.4rem; }
 
@@ -196,26 +199,27 @@
       display: none;
       width: 100%;
       margin-top: 14px;
-      padding: 15px;
-      background: var(--accent);
+      padding: 16px;
+      background: var(--grad);
       color: #fff;
       border: none;
-      border-radius: 50px;
-      font-size: 0.95rem;
-      font-weight: 600;
+      border-radius: 16px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
       cursor: pointer;
-      letter-spacing: 0.5px;
-      box-shadow: 0 6px 20px rgba(180, 80, 130, 0.35);
+      letter-spacing: 0.2px;
+      box-shadow: 0 8px 24px var(--glow);
       transition: transform 0.12s, box-shadow 0.12s;
     }
 
     #upload-btn:active {
       transform: scale(0.97);
-      box-shadow: 0 3px 10px rgba(180, 80, 130, 0.3);
+      box-shadow: 0 4px 12px var(--glow);
     }
 
     #upload-btn:disabled {
-      background: linear-gradient(135deg, #e0c0cc, #c8a0b4);
+      background: linear-gradient(135deg, #c4b0e0, #e0a0c8);
       box-shadow: none;
       cursor: not-allowed;
     }
@@ -229,13 +233,13 @@
     #progress-bar-wrap {
       background: rgba(255,255,255,0.5);
       border-radius: 50px;
-      height: 4px;
+      height: 5px;
       overflow: hidden;
     }
 
     #progress-bar {
       height: 100%;
-      background: var(--accent);
+      background: var(--grad);
       border-radius: 50px;
       transition: width 0.3s;
       width: 0%;
@@ -243,10 +247,10 @@
 
     #progress-text {
       text-align: center;
-      font-size: 0.76rem;
+      font-size: 0.74rem;
       color: var(--muted);
       margin-top: 10px;
-      letter-spacing: 0.3px;
+      font-weight: 500;
     }
 
     /* ── Success ────────────────── */
@@ -257,20 +261,20 @@
     }
 
     .check-ring {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: var(--accent);
+      width: 76px;
+      height: 76px;
+      border-radius: 22px;
+      background: var(--grad);
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto 24px;
-      box-shadow: 0 6px 24px rgba(180, 80, 130, 0.35);
+      box-shadow: 0 8px 28px var(--glow);
     }
 
     .check-ring svg {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       stroke: #fff;
       fill: none;
       stroke-width: 2.5;
@@ -279,33 +283,36 @@
     }
 
     #success-section h2 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      font-size: 1.4rem;
-      font-weight: 400;
-      color: var(--text);
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       margin-bottom: 8px;
     }
 
     #success-section p {
-      font-size: 0.85rem;
+      font-size: 0.84rem;
       color: var(--muted);
+      font-weight: 400;
     }
 
     #again-btn {
       margin-top: 24px;
-      padding: 12px 32px;
+      padding: 13px 32px;
       background: transparent;
-      color: var(--accent-solid);
-      border: 1.5px solid var(--accent-solid);
-      border-radius: 50px;
+      color: #db2777;
+      border: 1.5px solid #db2777;
+      border-radius: 14px;
+      font-family: 'Poppins', sans-serif;
       font-size: 0.88rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       transition: background 0.15s;
     }
 
-    #again-btn:active { background: rgba(180,80,130,0.08); }
+    #again-btn:active { background: rgba(219,39,119,0.08); }
 
     .gallery-link-small {
       display: block;
@@ -313,6 +320,7 @@
       font-size: 0.8rem;
       color: var(--muted);
       text-decoration: none;
+      font-weight: 500;
     }
 
     /* ── Footer ─────────────────── */
@@ -327,7 +335,7 @@
 
     footer a {
       font-size: 0.8rem;
-      font-weight: 500;
+      font-weight: 600;
       color: var(--muted);
       text-decoration: none;
     }
@@ -341,7 +349,6 @@
 </header>
 
 <main>
-  <!-- Upload section -->
   <div id="upload-section">
     <div class="drop-area" onclick="document.getElementById('fileInput').click()">
       <div class="camera-ring">
@@ -350,7 +357,7 @@
           <circle cx="12" cy="13" r="4"/>
         </svg>
       </div>
-      <p>写真を選択する</p>
+      <h2>写真を選択する</h2>
       <small>複数枚まとめて選択できます</small>
     </div>
     <input type="file" id="fileInput" accept="image/*" multiple>
@@ -360,7 +367,7 @@
       <div id="preview-grid"></div>
     </div>
 
-    <button id="upload-btn">シェアする</button>
+    <button id="upload-btn">シェアする ✦</button>
 
     <div id="progress-section">
       <div id="progress-bar-wrap">
@@ -370,13 +377,12 @@
     </div>
   </div>
 
-  <!-- Success screen -->
   <div id="success-section">
     <div class="check-ring">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <h2>Thank you !</h2>
-    <p>素敵な写真をありがとうございます</p>
+    <h2>Thank you!</h2>
+    <p>素敵な写真をありがとうございます ✨</p>
     <button id="again-btn" onclick="resetPage()">続けて送る</button>
     <a href="/gallery" class="gallery-link-small">みんなの写真を見る →</a>
   </div>

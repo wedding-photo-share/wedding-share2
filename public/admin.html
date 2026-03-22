@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>管理画面 - Wedding Photo Share</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital@1&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(150deg, #1a0818 0%, #0e0514 50%, #160820 100%);
+      font-family: 'Poppins', -apple-system, sans-serif;
+      background: linear-gradient(150deg, #0d0020 0%, #1a0535 50%, #0a0118 100%);
       background-attachment: fixed;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: #f0e8ec;
+      color: #f0e8f8;
       padding: 32px 16px;
     }
 
@@ -27,45 +27,43 @@
       max-width: 420px;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 12px;
     }
 
     /* ── Wordmark ─────────────────── */
     .wordmark {
       text-align: center;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .wordmark h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-style: italic;
-      font-size: 1.5rem;
-      font-weight: 400;
-      background: linear-gradient(135deg, #f7a8c4, #e07aaa, #c05890);
+      font-size: 1.6rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a78bfa 0%, #f472b6 55%, #fb923c 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      letter-spacing: 0.3px;
+      letter-spacing: -0.5px;
     }
 
     .wordmark p {
-      font-size: 0.75rem;
-      color: #7a6070;
+      font-size: 0.74rem;
+      color: #7b5ea0;
       margin-top: 5px;
-      letter-spacing: 0.5px;
+      font-weight: 400;
     }
 
     /* ── Card ─────────────────────── */
     .card {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(247, 168, 196, 0.18);
-      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(167, 139, 250, 0.2);
+      border-radius: 18px;
       padding: 18px 20px;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
     }
 
-    /* ── Tunnel status ────────────── */
+    /* ── Status ───────────────────── */
     .status-row {
       display: flex;
       align-items: center;
@@ -79,8 +77,8 @@
       flex-shrink: 0;
     }
 
-    .status-dot.starting { background: #f59e0b; animation: pulse 1.2s infinite; }
-    .status-dot.ready    { background: #86efac; }
+    .status-dot.starting { background: #fbbf24; animation: pulse 1.2s infinite; }
+    .status-dot.ready    { background: #4ade80; }
     .status-dot.error    { background: #f87171; }
 
     @keyframes pulse {
@@ -89,17 +87,19 @@
     }
 
     .status-text {
-      font-size: 0.82rem;
-      color: #a08898;
+      font-size: 0.81rem;
+      color: #b09acc;
+      font-weight: 400;
     }
 
     /* ── URL input ────────────────── */
     .field-label {
-      font-size: 0.7rem;
-      color: #7a6070;
+      font-size: 0.68rem;
+      color: #7b5ea0;
       margin-bottom: 10px;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
+      font-weight: 600;
     }
 
     .url-row {
@@ -110,31 +110,34 @@
     .url-row input {
       flex: 1;
       padding: 10px 13px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(247,168,196,0.15);
-      border-radius: 10px;
-      color: #f0e8ec;
-      font-size: 0.84rem;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 12px;
+      color: #f0e8f8;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 400;
     }
 
-    .url-row input::placeholder { color: #5a4050; }
+    .url-row input::placeholder { color: #4a3060; }
 
     .url-row input:focus {
       outline: none;
-      border-color: rgba(247,168,196,0.4);
+      border-color: rgba(244,114,182,0.4);
     }
 
     .url-row button {
       padding: 10px 16px;
-      background: linear-gradient(135deg, #f7a8c4, #c05890);
+      background: linear-gradient(135deg, #7c3aed, #db2777, #ea580c);
       color: #fff;
       border: none;
-      border-radius: 10px;
-      font-size: 0.82rem;
+      border-radius: 12px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
-      box-shadow: 0 3px 12px rgba(180,80,130,0.35);
+      box-shadow: 0 4px 14px rgba(219,39,119,0.35);
       transition: opacity 0.15s;
     }
 
@@ -142,12 +145,11 @@
 
     /* ── QR section ───────────────── */
     .qr-label {
-      font-size: 0.8rem;
-      color: #7a6070;
+      font-size: 0.78rem;
+      color: #7b5ea0;
       text-align: center;
       margin-bottom: 20px;
-      min-height: 1.1em;
-      letter-spacing: 0.3px;
+      font-weight: 400;
     }
 
     .qr-wrapper {
@@ -159,9 +161,9 @@
     #qr-container {
       display: none;
       background: #fff;
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 16px;
-      box-shadow: 0 8px 32px rgba(180,80,130,0.25);
+      box-shadow: 0 8px 36px rgba(124,58,237,0.3);
     }
 
     #qr-img {
@@ -172,33 +174,41 @@
 
     #qr-url {
       margin-top: 14px;
-      font-size: 0.74rem;
-      color: #f7a8c4;
+      font-size: 0.72rem;
+      color: #a78bfa;
       word-break: break-all;
       text-align: center;
+      font-weight: 500;
     }
 
     .copy-btn {
       margin-top: 14px;
-      padding: 9px 24px;
+      padding: 10px 26px;
       background: transparent;
-      color: #f0e8ec;
-      border: 1px solid rgba(247,168,196,0.25);
-      border-radius: 50px;
+      color: #f0e8f8;
+      border: 1px solid rgba(167,139,250,0.3);
+      border-radius: 12px;
+      font-family: 'Poppins', sans-serif;
       font-size: 0.78rem;
+      font-weight: 600;
       cursor: pointer;
       display: none;
       transition: border-color 0.15s, background 0.15s;
     }
 
-    .copy-btn:hover { border-color: rgba(247,168,196,0.5); background: rgba(247,168,196,0.06); }
-    .copy-btn:active { background: rgba(247,168,196,0.12); }
+    .copy-btn:hover {
+      border-color: rgba(244,114,182,0.5);
+      background: rgba(244,114,182,0.06);
+    }
+
+    .copy-btn:active { background: rgba(244,114,182,0.12); }
 
     #copied-msg {
       display: none;
       margin-top: 8px;
-      font-size: 0.75rem;
-      color: #86efac;
+      font-size: 0.74rem;
+      color: #4ade80;
+      font-weight: 500;
     }
   </style>
 </head>
@@ -211,15 +221,13 @@
     <p>管理画面 — ゲストにQRコードを見せてください</p>
   </div>
 
-  <!-- Tunnel status -->
   <div class="card">
-    <div class="status-row" id="tunnel-status-bar">
+    <div class="status-row">
       <div class="status-dot starting" id="status-dot"></div>
       <span class="status-text" id="status-text">Cloudflare Tunnel 起動中...</span>
     </div>
   </div>
 
-  <!-- URL input -->
   <div class="card">
     <div class="field-label">公開URL</div>
     <div class="url-row">
@@ -228,7 +236,6 @@
     </div>
   </div>
 
-  <!-- QR code -->
   <div class="card">
     <p class="qr-label" id="qr-label">Cloudflare Tunnel の起動を待っています...</p>
     <div class="qr-wrapper">
@@ -237,7 +244,7 @@
       </div>
       <div id="qr-url"></div>
       <button class="copy-btn" id="copy-btn" onclick="copyUrl()">URLをコピー</button>
-      <div id="copied-msg">コピーしました</div>
+      <div id="copied-msg">✓ コピーしました</div>
     </div>
   </div>
 
@@ -274,9 +281,7 @@
         input.placeholder = 'https://...';
         clearInterval(pollingTimer);
       }
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   }
 
   async function generateQR(initialUrl) {
@@ -294,7 +299,7 @@
       document.getElementById('qr-img').src = data.qrcode;
       document.getElementById('qr-container').style.display = 'inline-block';
       document.getElementById('qr-url').textContent = data.url;
-      document.getElementById('qr-label').textContent = 'スマホでスキャンしてください';
+      document.getElementById('qr-label').textContent = 'スマホでスキャンしてください ✦';
       document.getElementById('copy-btn').style.display = 'inline-block';
     } catch (err) {
       document.getElementById('qr-label').textContent = 'QRコード生成に失敗しました';
