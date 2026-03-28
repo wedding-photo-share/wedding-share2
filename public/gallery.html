@@ -388,8 +388,16 @@
   function updateLightbox() {
     const photo = photos[currentIndex];
     document.getElementById('lightbox-img').src = photo.viewUrl;
-    document.getElementById('lightbox-download').href = photo.downloadUrl;
-    document.getElementById('lightbox-download').download = photo.filename;
+    const dlLink = document.getElementById('lightbox-download');
+    dlLink.href = photo.downloadUrl;
+    dlLink.download = photo.filename;
+    dlLink.onclick = () => {
+      fetch('/api/track-download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: photo.key, size: photo.size }),
+      }).catch(() => {});
+    };
     document.getElementById('lightbox-prev').style.visibility = currentIndex > 0 ? 'visible' : 'hidden';
     document.getElementById('lightbox-next').style.visibility = currentIndex < photos.length - 1 ? 'visible' : 'hidden';
   }
@@ -403,6 +411,13 @@
   }
 
   function downloadPhoto(photo) {
+    // ダウンロードをトラッキング（fire-and-forget）
+    fetch('/api/track-download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: photo.key, size: photo.size }),
+    }).catch(() => {});
+
     const a = document.createElement('a');
     a.href = photo.downloadUrl;
     a.download = photo.filename;

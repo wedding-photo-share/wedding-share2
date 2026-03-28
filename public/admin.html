@@ -304,6 +304,17 @@
       text-align: center;
       padding: 8px 0;
     }
+
+    .usage-divider {
+      height: 1px;
+      background: rgba(167,139,250,0.15);
+      margin: 14px 0;
+    }
+
+    .usage-dl-count {
+      font-size: 0.74rem;
+      color: #7b5ea0;
+    }
   </style>
 </head>
 <body>
@@ -347,6 +358,22 @@
         <span class="usage-remain" id="usage-remain">残り 5.00 GB</span>
       </div>
       <div class="usage-cost" id="usage-cost"></div>
+
+      <!-- ダウンロード転送量 -->
+      <div class="usage-divider"></div>
+      <div class="usage-title">データ転送（ダウンロード）</div>
+      <div class="usage-main">
+        <span class="usage-used" id="dl-used">0 MB</span>
+        <span class="usage-limit">無料枠 100 GB/月</span>
+      </div>
+      <div class="usage-bar-wrap">
+        <div class="usage-bar" id="dl-bar" style="width:0%"></div>
+      </div>
+      <div class="usage-meta">
+        <span class="usage-dl-count" id="dl-count">0 回のダウンロード</span>
+        <span class="usage-remain" id="dl-remain">残り 100.00 GB</span>
+      </div>
+      <div class="usage-cost" id="dl-cost"></div>
     </div>
   </div>
 
@@ -449,31 +476,54 @@
       const res = await fetch('/api/s3-usage');
       if (!res.ok) throw new Error('fetch failed');
       const d = await res.json();
+      const s = d.storage;
+      const t = d.transfer;
 
       document.getElementById('usage-loading').style.display = 'none';
       document.getElementById('usage-body').style.display    = 'block';
 
-      document.getElementById('usage-used').textContent    = formatBytes(d.totalBytes);
-      document.getElementById('usage-photos').textContent  = d.totalCount + ' 枚';
+      // ── ストレージ ──
+      document.getElementById('usage-used').textContent   = formatBytes(s.totalBytes);
+      document.getElementById('usage-photos').textContent = s.totalCount + ' 枚';
 
-      const bar = document.getElementById('usage-bar');
-      bar.style.width = d.usedPct + '%';
+      const storageBar    = document.getElementById('usage-bar');
+      storageBar.style.width = s.usedPct + '%';
 
-      const remainEl = document.getElementById('usage-remain');
-      remainEl.textContent = '残り ' + formatBytes(d.remainBytes);
+      const storageRemain = document.getElementById('usage-remain');
+      storageRemain.textContent = '残り ' + formatBytes(s.remainBytes);
 
-      if (d.usedPct >= 80) {
-        bar.classList.add('danger');
-        remainEl.classList.add('danger');
+      if (s.usedPct >= 80) {
+        storageBar.classList.add('danger');
+        storageRemain.classList.add('danger');
       }
 
-      const costEl = document.getElementById('usage-cost');
-      if (d.isOverFreeTier) {
-        costEl.style.display = 'block';
-        const overMB = (d.overBytes / 1024 ** 2).toFixed(1);
-        costEl.textContent =
-          `⚠ 無料枠を ${overMB} MB 超過しています。` +
-          `追加料金の目安: $${d.estimatedCostUSD.toFixed(4)} USD/月`;
+      const storageCostEl = document.getElementById('usage-cost');
+      if (s.isOverFreeTier) {
+        storageCostEl.style.display = 'block';
+        storageCostEl.textContent =
+          `⚠ 無料枠超過。追加料金の目安: $${s.estimatedCostUSD.toFixed(4)} USD/月`;
+      }
+
+      // ── ダウンロード転送量 ──
+      document.getElementById('dl-used').textContent  = formatBytes(t.totalBytes);
+      document.getElementById('dl-count').textContent = t.totalDownloads + ' 回のダウンロード';
+
+      const dlBar    = document.getElementById('dl-bar');
+      dlBar.style.width = t.usedPct + '%';
+
+      const dlRemain = document.getElementById('dl-remain');
+      dlRemain.textContent = '残り ' + formatBytes(t.remainBytes);
+
+      if (t.usedPct >= 80) {
+        dlBar.classList.add('danger');
+        dlRemain.classList.add('danger');
+      }
+
+      const dlCostEl = document.getElementById('dl-cost');
+      if (t.isOverFreeTier) {
+        dlCostEl.style.display = 'block';
+        dlCostEl.textContent =
+          `⚠ 無料枠超過。追加料金の目安: $${t.estimatedCostUSD.toFixed(4)} USD/月`;
       }
     } catch (e) {
       document.getElementById('usage-loading').textContent = '取得に失敗しました';

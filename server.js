@@ -293,47 +293,113 @@ app.get('/api/photos', async (req, res) => {
   }
 });
 
+// ── ダウンロード統計（S3に永続保存）──────────────────────────
+const STATS_KEY = 'stats/downloads.json';
+
+async function readDownloadStats() {
+  try {
+    const data = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: STATS_KEY }));
+    const body = await data.Body.transformToString();
+    return JSON.parse(body);
+  } catch (_) {
+    return { totalDownloads: 0, totalBytes: 0, lastUpdated: null };
+  }
+}
+
+async function writeDownloadStats(stats) {
+  await s3Client.send(new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: STATS_KEY,
+    Body: JSON.stringify(stats),
+    ContentType: 'application/json',
+  }));
+}
+
+// ダウンロードトラッキング（gallery.html から呼ばれる）
+app.post('/api/track-download', async (req, res) => {
+  try {
+    const { key, size } = req.body;
+    if (!key || typeof size !== 'number' || size < 0 || size > 500 * 1024 * 1024) {
+      return res.status(400).json({ error: '無効なパラメータです' });
+    }
+    const stats = await readDownloadStats();
+    stats.totalDownloads = (stats.totalDownloads || 0) + 1;
+    stats.totalBytes     = (stats.totalBytes     || 0) + size;
+    stats.lastUpdated    = new Date().toISOString();
+    await writeDownloadStats(stats);
+    res.json({ ok: true });
+  } catch (_) {
+    res.json({ ok: true }); // ユーザー体験を壊さないよう常に200を返す
+  }
+});
+
 // S3 使用量取得エンドポイント（管理画面専用）
-const S3_FREE_TIER_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
-const S3_PRICE_PER_GB    = 0.025;                   // USD/GB（ap-northeast-1）
+const S3_FREE_TIER_BYTES      = 5 * 1024 * 1024 * 1024;   // ストレージ無料枠: 5 GB
+const S3_STORAGE_PRICE_PER_GB = 0.025;                      // USD/GB（ap-northeast-1）
+const DT_FREE_TIER_BYTES      = 100 * 1024 * 1024 * 1024;  // 転送無料枠: 100 GB/月
+const DT_PRICE_PER_GB         = 0.09;                       // USD/GB（ap-northeast-1）
 
 app.get('/api/s3-usage', requireAdmin, async (req, res) => {
   try {
+    // ストレージ集計とダウンロード統計を並行取得
     let totalBytes = 0;
     let totalCount = 0;
     let continuationToken = undefined;
 
-    // 1000件超でもすべて取得（ページネーション）
-    do {
-      const cmd = new ListObjectsV2Command({
-        Bucket: BUCKET_NAME,
-        Prefix: 'uploads/',
-        ContinuationToken: continuationToken,
-      });
-      const data = await s3Client.send(cmd);
-      const objects = (data.Contents || []).filter(obj => !obj.Key.endsWith('/'));
-      totalCount += objects.length;
-      totalBytes += objects.reduce((sum, obj) => sum + (obj.Size || 0), 0);
-      continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined;
-    } while (continuationToken);
+    const [, dlStats] = await Promise.all([
+      // 1000件超でもすべて取得（ページネーション）
+      (async () => {
+        do {
+          const cmd = new ListObjectsV2Command({
+            Bucket: BUCKET_NAME,
+            Prefix: 'uploads/',
+            ContinuationToken: continuationToken,
+          });
+          const data = await s3Client.send(cmd);
+          const objects = (data.Contents || []).filter(obj => !obj.Key.endsWith('/'));
+          totalCount += objects.length;
+          totalBytes += objects.reduce((sum, obj) => sum + (obj.Size || 0), 0);
+          continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined;
+        } while (continuationToken);
+      })(),
+      readDownloadStats(),
+    ]);
 
-    const usedGB        = totalBytes / (1024 ** 3);
-    const freeTierGB    = S3_FREE_TIER_BYTES / (1024 ** 3);
-    const remainBytes   = Math.max(0, S3_FREE_TIER_BYTES - totalBytes);
-    const usedPct       = Math.min(100, (totalBytes / S3_FREE_TIER_BYTES) * 100);
-    const overBytes     = Math.max(0, totalBytes - S3_FREE_TIER_BYTES);
-    const estimatedCost = (overBytes / (1024 ** 3)) * S3_PRICE_PER_GB;
+    // ストレージ
+    const storageRemain   = Math.max(0, S3_FREE_TIER_BYTES - totalBytes);
+    const storageUsedPct  = Math.min(100, (totalBytes / S3_FREE_TIER_BYTES) * 100);
+    const storageOverGB   = Math.max(0, totalBytes - S3_FREE_TIER_BYTES) / (1024 ** 3);
+    const storageCost     = storageOverGB * S3_STORAGE_PRICE_PER_GB;
+
+    // ダウンロード（データ転送アウト）
+    const dlBytes         = dlStats.totalBytes || 0;
+    const dlRemain        = Math.max(0, DT_FREE_TIER_BYTES - dlBytes);
+    const dlUsedPct       = Math.min(100, (dlBytes / DT_FREE_TIER_BYTES) * 100);
+    const dlOverGB        = Math.max(0, dlBytes - DT_FREE_TIER_BYTES) / (1024 ** 3);
+    const dlCost          = dlOverGB * DT_PRICE_PER_GB;
 
     res.json({
-      totalBytes,
-      totalCount,
-      usedGB: Math.round(usedGB * 1000) / 1000,
-      freeTierGB,
-      remainBytes,
-      usedPct: Math.round(usedPct * 10) / 10,
-      overBytes,
-      estimatedCostUSD: Math.round(estimatedCost * 10000) / 10000,
-      isOverFreeTier: totalBytes > S3_FREE_TIER_BYTES,
+      // ストレージ
+      storage: {
+        totalBytes,
+        totalCount,
+        freeTierBytes: S3_FREE_TIER_BYTES,
+        remainBytes: storageRemain,
+        usedPct: Math.round(storageUsedPct * 10) / 10,
+        isOverFreeTier: totalBytes > S3_FREE_TIER_BYTES,
+        estimatedCostUSD: Math.round(storageCost * 10000) / 10000,
+      },
+      // ダウンロード転送量
+      transfer: {
+        totalDownloads: dlStats.totalDownloads || 0,
+        totalBytes: dlBytes,
+        freeTierBytes: DT_FREE_TIER_BYTES,
+        remainBytes: dlRemain,
+        usedPct: Math.round(dlUsedPct * 10) / 10,
+        isOverFreeTier: dlBytes > DT_FREE_TIER_BYTES,
+        estimatedCostUSD: Math.round(dlCost * 10000) / 10000,
+        lastUpdated: dlStats.lastUpdated || null,
+      },
     });
   } catch (err) {
     console.error('S3使用量取得エラー:', err);
