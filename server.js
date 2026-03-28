@@ -50,10 +50,17 @@ const ALLOWED_EXTENSIONS = new Set([
 
 // Presigned URL 有効期限
 const UPLOAD_URL_EXPIRY  = 5 * 60;   // アップロード用: 5分
-const VIEW_URL_EXPIRY    = 30 * 60;  // 表示・ダウンロード用: 30分
+const VIEW_URL_EXPIRY    = 30 * 60;  // 表示・ダウンロード用: 30分（CloudFront未使用時）
 
-// 写真一覧キャッシュ TTL（表示用 Presigned URL の有効期限より短く設定）
-const PHOTO_CACHE_TTL = 25 * 60 * 1000; // 25分
+// CloudFront ドメイン（設定済みなら閲覧URLをCloudFront経由にする）
+const CLOUDFRONT_DOMAIN = process.env.CLOUDFRONT_DOMAIN
+  ? process.env.CLOUDFRONT_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  : null;
+
+// 写真一覧キャッシュ TTL
+// CloudFront使用時: URLに有効期限がないため長めに設定可能
+// CloudFront未使用時: Presigned URLの有効期限内に収める
+const PHOTO_CACHE_TTL = CLOUDFRONT_DOMAIN ? 10 * 60 * 1000 : 25 * 60 * 1000;
 
 const s3Client = new S3Client({ region: REGION });
 
@@ -263,11 +270,15 @@ app.get('/api/photos', async (req, res) => {
     objects.sort((a, b) => b.LastModified - a.LastModified);
 
     const photos = await Promise.all(objects.map(async (obj) => {
-      const viewUrl = await getSignedUrl(s3Client, new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: obj.Key,
-      }), { expiresIn: VIEW_URL_EXPIRY });
+      // 閲覧URL: CloudFront設定済みならCDN経由（高速・安価）、未設定ならS3 Presigned URL
+      const viewUrl = CLOUDFRONT_DOMAIN
+        ? `https://${CLOUDFRONT_DOMAIN}/${obj.Key}`
+        : await getSignedUrl(s3Client, new GetObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: obj.Key,
+          }), { expiresIn: VIEW_URL_EXPIRY });
 
+      // ダウンロードURL: ファイル名を付与するためS3 Presigned URLを使用
       const downloadUrl = await getSignedUrl(s3Client, new GetObjectCommand({
         Bucket: BUCKET_NAME,
         Key: obj.Key,
