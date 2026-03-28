@@ -14,17 +14,14 @@
       background: linear-gradient(150deg, #0d0020 0%, #1a0535 50%, #0a0118 100%);
       background-attachment: fixed;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       color: #f0e8f8;
-      padding: 32px 16px;
+      padding: 32px 16px 60px;
     }
 
     .container {
       width: 100%;
-      max-width: 420px;
+      max-width: 480px;
+      margin: 0 auto;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -51,6 +48,46 @@
       color: #7b5ea0;
       margin-top: 5px;
       font-weight: 400;
+    }
+
+    /* ── Tabs ─────────────────────── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(167,139,250,0.15);
+      border-radius: 14px;
+      padding: 4px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 9px 6px;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #7b5ea0;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      background: linear-gradient(135deg, rgba(124,58,237,0.3), rgba(219,39,119,0.2));
+      color: #e0c8f8;
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     /* ── Card ─────────────────────── */
@@ -126,7 +163,7 @@
       border-color: rgba(244,114,182,0.4);
     }
 
-    .url-row button {
+    .url-row button, .btn-action {
       padding: 10px 16px;
       background: linear-gradient(135deg, #7c3aed, #db2777, #ea580c);
       color: #fff;
@@ -141,7 +178,7 @@
       transition: opacity 0.15s;
     }
 
-    .url-row button:active { opacity: 0.8; }
+    .url-row button:active, .btn-action:active { opacity: 0.8; }
 
     /* ── QR section ───────────────── */
     .qr-label {
@@ -200,8 +237,6 @@
       border-color: rgba(244,114,182,0.5);
       background: rgba(244,114,182,0.06);
     }
-
-    .copy-btn:active { background: rgba(244,114,182,0.12); }
 
     #copied-msg {
       display: none;
@@ -295,7 +330,6 @@
     .usage-photos {
       font-size: 0.74rem;
       color: #7b5ea0;
-      margin-top: 8px;
     }
 
     .usage-loading {
@@ -315,6 +349,324 @@
       font-size: 0.74rem;
       color: #7b5ea0;
     }
+
+    /* ── Community management ──────── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #c4a8f0;
+    }
+
+    .btn-new {
+      padding: 7px 14px;
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(219,39,119,0.3);
+      transition: opacity 0.15s;
+    }
+
+    .btn-new:active { opacity: 0.8; }
+
+    /* 新規作成フォーム */
+    .create-form {
+      display: none;
+      margin-bottom: 14px;
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(167,139,250,0.15);
+      border-radius: 14px;
+    }
+
+    .create-form.open {
+      display: block;
+    }
+
+    .form-field {
+      margin-bottom: 10px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 0.66rem;
+      color: #7b5ea0;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 9px 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 10px;
+      color: #f0e8f8;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.82rem;
+      outline: none;
+    }
+
+    .form-input::placeholder { color: #4a3060; }
+    .form-input:focus { border-color: rgba(244,114,182,0.4); }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .btn-cancel-sm {
+      padding: 8px 14px;
+      background: transparent;
+      color: #7b5ea0;
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-save-sm {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.74rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(219,39,119,0.25);
+    }
+
+    /* コミュニティ行 */
+    .community-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(167,139,250,0.1);
+    }
+
+    .community-row:last-child {
+      border-bottom: none;
+    }
+
+    .community-info {
+      flex: 1;
+    }
+
+    .community-name {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: #e0c8f8;
+    }
+
+    .community-date {
+      font-size: 0.7rem;
+      color: #7b5ea0;
+      margin-top: 2px;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-edit-pw {
+      padding: 5px 10px;
+      background: rgba(167,139,250,0.1);
+      color: #a78bfa;
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-edit-pw:hover { background: rgba(167,139,250,0.18); }
+
+    .btn-delete-sm {
+      padding: 5px 10px;
+      background: rgba(248,113,113,0.08);
+      color: #f87171;
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 8px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-delete-sm:hover { background: rgba(248,113,113,0.15); }
+
+    /* インライン合言葉変更フォーム */
+    .inline-pw-form {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(167,139,250,0.12);
+      border-radius: 12px;
+    }
+
+    .inline-pw-form.open {
+      display: block;
+    }
+
+    .warn-text {
+      font-size: 0.7rem;
+      color: #f87171;
+      margin-bottom: 8px;
+    }
+
+    /* ユーザー管理 */
+    .user-row {
+      padding: 11px 0;
+      border-bottom: 1px solid rgba(167,139,250,0.1);
+    }
+
+    .user-row:last-child {
+      border-bottom: none;
+    }
+
+    .user-row-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .user-nickname {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: #e0c8f8;
+    }
+
+    .user-communities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 5px;
+    }
+
+    .community-tag {
+      font-size: 0.66rem;
+      font-weight: 600;
+      color: #a78bfa;
+      background: rgba(124,58,237,0.12);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 20px;
+      padding: 2px 8px;
+    }
+
+    .user-lastseen {
+      font-size: 0.7rem;
+      color: #7b5ea0;
+      margin-top: 4px;
+    }
+
+    /* 空状態 */
+    .empty-state {
+      text-align: center;
+      padding: 24px 0;
+      font-size: 0.8rem;
+      color: #7b5ea0;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: #1a0535;
+      border: 1px solid rgba(167,139,250,0.25);
+      border-radius: 20px;
+      padding: 24px;
+      width: 100%;
+      max-width: 340px;
+    }
+
+    .modal h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e0c8f8;
+      margin-bottom: 6px;
+    }
+
+    .modal p {
+      font-size: 0.76rem;
+      color: #9d72b8;
+      margin-bottom: 16px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn-modal-cancel {
+      flex: 1;
+      padding: 10px;
+      background: transparent;
+      color: #7b5ea0;
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 12px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-modal-ok {
+      flex: 1;
+      padding: 10px;
+      background: linear-gradient(135deg, #7c3aed, #db2777);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .error-inline {
+      font-size: 0.74rem;
+      color: #f87171;
+      margin-top: 8px;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -323,75 +675,175 @@
 
   <div class="wordmark">
     <h1>Wedding Photo Share</h1>
-    <p>管理画面 — ゲストにQRコードを見せてください</p>
+    <p>管理画面</p>
   </div>
 
-  <div class="card">
-    <div class="status-row">
-      <div class="status-dot starting" id="status-dot"></div>
-      <span class="status-text" id="status-text">Cloudflare Tunnel 起動中...</span>
-    </div>
+  <!-- タブ -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('qr')">QRコード</button>
+    <button class="tab-btn" onclick="switchTab('community')">コミュニティ</button>
+    <button class="tab-btn" onclick="switchTab('users')">ユーザー</button>
+    <button class="tab-btn" onclick="switchTab('storage')">ストレージ</button>
   </div>
 
-  <div class="card">
-    <div class="field-label">公開URL</div>
-    <div class="url-row">
-      <input type="text" id="url-input" placeholder="トンネル起動待ち..." readonly />
-      <button onclick="generateQR()">QR生成</button>
+  <!-- ── タブ1: QRコード ── -->
+  <div class="tab-panel active" id="tab-qr">
+
+    <div class="card">
+      <div class="status-row">
+        <div class="status-dot starting" id="status-dot"></div>
+        <span class="status-text" id="status-text">Cloudflare Tunnel 起動中...</span>
+      </div>
     </div>
+
+    <div class="card">
+      <div class="field-label">公開URL</div>
+      <div class="url-row">
+        <input type="text" id="url-input" placeholder="トンネル起動待ち..." readonly />
+        <button onclick="generateQR()">QR生成</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="qr-label" id="qr-label">Cloudflare Tunnel の起動を待っています...</p>
+      <div class="qr-wrapper">
+        <div id="qr-container">
+          <img id="qr-img" src="" alt="QR Code">
+        </div>
+        <div id="qr-url"></div>
+        <button class="copy-btn" id="copy-btn" onclick="copyUrl()">URLをコピー</button>
+        <div id="copied-msg">✓ コピーしました</div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- S3 使用量カード -->
-  <div class="card" id="usage-card">
-    <div class="usage-title">S3 ストレージ使用量</div>
-    <div class="usage-loading" id="usage-loading">読み込み中...</div>
-    <div id="usage-body" style="display:none">
-      <div class="usage-main">
-        <span class="usage-used" id="usage-used">0 MB</span>
-        <span class="usage-limit">無料枠 5 GB</span>
-      </div>
-      <div class="usage-bar-wrap">
-        <div class="usage-bar" id="usage-bar" style="width:0%"></div>
-      </div>
-      <div class="usage-meta">
-        <span class="usage-photos" id="usage-photos">0 枚</span>
-        <span class="usage-remain" id="usage-remain">残り 5.00 GB</span>
-      </div>
-      <div class="usage-cost" id="usage-cost"></div>
+  <!-- ── タブ2: コミュニティ管理 ── -->
+  <div class="tab-panel" id="tab-community">
 
-      <!-- ダウンロード転送量 -->
-      <div class="usage-divider"></div>
-      <div class="usage-title">データ転送（ダウンロード）</div>
-      <div class="usage-main">
-        <span class="usage-used" id="dl-used">0 MB</span>
-        <span class="usage-limit">無料枠 100 GB/月</span>
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">コミュニティ一覧</div>
+        <button class="btn-new" onclick="toggleCreateForm()">+ 新規作成</button>
       </div>
-      <div class="usage-bar-wrap">
-        <div class="usage-bar" id="dl-bar" style="width:0%"></div>
+
+      <!-- 新規作成フォーム -->
+      <div class="create-form" id="community-create-form">
+        <div class="form-field">
+          <label class="form-label">コミュニティ名</label>
+          <input type="text" class="form-input" id="new-comm-name" placeholder="例: テーブルA" maxlength="50">
+        </div>
+        <div class="form-field">
+          <label class="form-label">合言葉</label>
+          <input type="password" class="form-input" id="new-comm-passphrase" placeholder="参加用の合言葉" maxlength="100">
+        </div>
+        <div class="error-inline" id="create-comm-error"></div>
+        <div class="form-actions">
+          <button class="btn-cancel-sm" onclick="toggleCreateForm()">キャンセル</button>
+          <button class="btn-save-sm" onclick="createCommunity()">作成</button>
+        </div>
       </div>
-      <div class="usage-meta">
-        <span class="usage-dl-count" id="dl-count">0 回のダウンロード</span>
-        <span class="usage-remain" id="dl-remain">残り 100.00 GB</span>
+
+      <!-- コミュニティリスト -->
+      <div id="community-list">
+        <div class="usage-loading" id="comm-loading">読み込み中...</div>
       </div>
-      <div class="usage-cost" id="dl-cost"></div>
     </div>
+
   </div>
 
-  <div class="card">
-    <p class="qr-label" id="qr-label">Cloudflare Tunnel の起動を待っています...</p>
-    <div class="qr-wrapper">
-      <div id="qr-container">
-        <img id="qr-img" src="" alt="QR Code">
+  <!-- ── タブ3: ユーザー管理 ── -->
+  <div class="tab-panel" id="tab-users">
+
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">ユーザー一覧</div>
+        <button class="btn-new" onclick="loadUsers()">更新</button>
       </div>
-      <div id="qr-url"></div>
-      <button class="copy-btn" id="copy-btn" onclick="copyUrl()">URLをコピー</button>
-      <div id="copied-msg">✓ コピーしました</div>
+      <div id="user-list">
+        <div class="usage-loading" id="users-loading">読み込み中...</div>
+      </div>
     </div>
+
+  </div>
+
+  <!-- ── タブ4: ストレージ ── -->
+  <div class="tab-panel" id="tab-storage">
+
+    <div class="card" id="usage-card">
+      <div class="usage-title">S3 ストレージ使用量</div>
+      <div class="usage-loading" id="usage-loading">読み込み中...</div>
+      <div id="usage-body" style="display:none">
+        <div class="usage-main">
+          <span class="usage-used" id="usage-used">0 MB</span>
+          <span class="usage-limit">無料枠 5 GB</span>
+        </div>
+        <div class="usage-bar-wrap">
+          <div class="usage-bar" id="usage-bar" style="width:0%"></div>
+        </div>
+        <div class="usage-meta">
+          <span class="usage-photos" id="usage-photos">0 枚</span>
+          <span class="usage-remain" id="usage-remain">残り 5.00 GB</span>
+        </div>
+        <div class="usage-cost" id="usage-cost"></div>
+
+        <div class="usage-divider"></div>
+        <div class="usage-title">データ転送（ダウンロード）</div>
+        <div class="usage-main">
+          <span class="usage-used" id="dl-used">0 MB</span>
+          <span class="usage-limit">無料枠 100 GB/月</span>
+        </div>
+        <div class="usage-bar-wrap">
+          <div class="usage-bar" id="dl-bar" style="width:0%"></div>
+        </div>
+        <div class="usage-meta">
+          <span class="usage-dl-count" id="dl-count">0 回のダウンロード</span>
+          <span class="usage-remain" id="dl-remain">残り 100.00 GB</span>
+        </div>
+        <div class="usage-cost" id="dl-cost"></div>
+      </div>
+    </div>
+
   </div>
 
 </div>
 
+<!-- 合言葉変更確認モーダル -->
+<div class="modal-overlay" id="pw-change-modal">
+  <div class="modal">
+    <h3>合言葉を変更</h3>
+    <p>変更すると、このコミュニティのメンバーが全員ログアウトされます。</p>
+    <div class="form-field">
+      <label class="form-label">新しい合言葉</label>
+      <input type="password" class="form-input" id="modal-new-pw" placeholder="新しい合言葉" maxlength="100">
+    </div>
+    <div class="error-inline" id="modal-pw-error"></div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closePwModal()">キャンセル</button>
+      <button class="btn-modal-ok" onclick="submitPwChange()">変更する</button>
+    </div>
+  </div>
+</div>
+
 <script>
+  // ── タブ切替 ────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+      const tabNames = ['qr', 'community', 'users', 'storage'];
+      btn.classList.toggle('active', tabNames[i] === name);
+    });
+    document.querySelectorAll('.tab-panel').forEach(panel => {
+      panel.classList.remove('active');
+    });
+    document.getElementById('tab-' + name).classList.add('active');
+
+    if (name === 'community') loadCommunities();
+    if (name === 'users') loadUsers();
+    if (name === 'storage') loadS3Usage();
+  }
+
+  // ── QRコード（既存機能） ─────────────────────────────────────
+
   let pollingTimer = null;
   let tunnelReady = false;
 
@@ -463,7 +915,8 @@
   pollTunnelStatus();
   pollingTimer = setInterval(pollTunnelStatus, 1000);
 
-  // ── S3 使用量 ──────────────────────────────
+  // ── S3 使用量 ──────────────────────────────────────────────
+
   function formatBytes(bytes) {
     if (bytes < 1024)             return bytes + ' B';
     if (bytes < 1024 ** 2)        return (bytes / 1024).toFixed(1) + ' KB';
@@ -482,7 +935,6 @@
       document.getElementById('usage-loading').style.display = 'none';
       document.getElementById('usage-body').style.display    = 'block';
 
-      // ── ストレージ ──
       document.getElementById('usage-used').textContent   = formatBytes(s.totalBytes);
       document.getElementById('usage-photos').textContent = s.totalCount + ' 枚';
 
@@ -504,7 +956,6 @@
           `⚠ 無料枠超過。追加料金の目安: $${s.estimatedCostUSD.toFixed(4)} USD/月`;
       }
 
-      // ── ダウンロード転送量 ──
       document.getElementById('dl-used').textContent  = formatBytes(t.totalBytes);
       document.getElementById('dl-count').textContent = t.totalDownloads + ' 回のダウンロード';
 
@@ -530,7 +981,236 @@
     }
   }
 
-  loadS3Usage();
+  // ── コミュニティ管理 ────────────────────────────────────────
+
+  function toggleCreateForm() {
+    const form = document.getElementById('community-create-form');
+    form.classList.toggle('open');
+    if (form.classList.contains('open')) {
+      document.getElementById('new-comm-name').focus();
+    } else {
+      document.getElementById('new-comm-name').value = '';
+      document.getElementById('new-comm-passphrase').value = '';
+      document.getElementById('create-comm-error').style.display = 'none';
+    }
+  }
+
+  async function loadCommunities() {
+    const listEl = document.getElementById('community-list');
+    document.getElementById('comm-loading').style.display = 'block';
+    listEl.innerHTML = '<div class="usage-loading" id="comm-loading">読み込み中...</div>';
+
+    try {
+      const res = await fetch('/api/admin/communities');
+      if (!res.ok) throw new Error('fetch failed');
+      const { communities } = await res.json();
+
+      if (communities.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">コミュニティがありません</div>';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      communities.forEach(c => {
+        const row = document.createElement('div');
+        row.id = 'comm-row-' + c.id;
+        row.innerHTML = `
+          <div class="community-row">
+            <div class="community-info">
+              <div class="community-name">${escapeHtml(c.name)}</div>
+              <div class="community-date">${formatDate(c.createdAt)}</div>
+            </div>
+            <div class="row-actions">
+              <button class="btn-edit-pw" onclick="togglePwForm('${c.id}')">合言葉変更</button>
+              <button class="btn-delete-sm" onclick="deleteCommunity('${c.id}', '${escapeHtml(c.name)}')">削除</button>
+            </div>
+          </div>
+          <div class="inline-pw-form" id="pw-form-${c.id}">
+            <div class="warn-text">⚠ 変更するとこのコミュニティのメンバーが全員ログアウトされます</div>
+            <div class="form-field">
+              <input type="password" class="form-input" id="pw-input-${c.id}" placeholder="新しい合言葉" maxlength="100">
+            </div>
+            <div class="error-inline" id="pw-error-${c.id}"></div>
+            <div class="form-actions">
+              <button class="btn-cancel-sm" onclick="togglePwForm('${c.id}')">キャンセル</button>
+              <button class="btn-save-sm" onclick="changePw('${c.id}')">変更する</button>
+            </div>
+          </div>
+        `;
+        listEl.appendChild(row);
+      });
+    } catch (e) {
+      listEl.innerHTML = '<div class="empty-state" style="color:#f87171">取得に失敗しました</div>';
+    }
+  }
+
+  function togglePwForm(id) {
+    const form = document.getElementById('pw-form-' + id);
+    form.classList.toggle('open');
+    if (form.classList.contains('open')) {
+      document.getElementById('pw-input-' + id).focus();
+    }
+  }
+
+  async function createCommunity() {
+    const name = document.getElementById('new-comm-name').value.trim();
+    const passphrase = document.getElementById('new-comm-passphrase').value;
+    const errorEl = document.getElementById('create-comm-error');
+    errorEl.style.display = 'none';
+
+    if (!name) { errorEl.textContent = '名前を入力してください'; errorEl.style.display = 'block'; return; }
+    if (!passphrase) { errorEl.textContent = '合言葉を入力してください'; errorEl.style.display = 'block'; return; }
+
+    try {
+      const res = await fetch('/api/admin/communities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, passphrase }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errorEl.textContent = data.error || '作成に失敗しました';
+        errorEl.style.display = 'block';
+        return;
+      }
+      toggleCreateForm();
+      loadCommunities();
+    } catch (e) {
+      errorEl.textContent = 'ネットワークエラーが発生しました';
+      errorEl.style.display = 'block';
+    }
+  }
+
+  async function changePw(communityId) {
+    const pw = document.getElementById('pw-input-' + communityId).value;
+    const errorEl = document.getElementById('pw-error-' + communityId);
+    errorEl.style.display = 'none';
+
+    if (!pw) {
+      errorEl.textContent = '合言葉を入力してください';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/communities/' + communityId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passphrase: pw }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        errorEl.textContent = data.error || '変更に失敗しました';
+        errorEl.style.display = 'block';
+        return;
+      }
+      togglePwForm(communityId);
+      document.getElementById('pw-input-' + communityId).value = '';
+    } catch (e) {
+      errorEl.textContent = 'ネットワークエラーが発生しました';
+      errorEl.style.display = 'block';
+    }
+  }
+
+  async function deleteCommunity(communityId, name) {
+    if (!confirm(`「${name}」を削除してもよろしいですか？\nこの操作は取り消せません。`)) return;
+
+    try {
+      const res = await fetch('/api/admin/communities/' + communityId, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || '削除に失敗しました');
+        return;
+      }
+      loadCommunities();
+    } catch (e) {
+      alert('ネットワークエラーが発生しました');
+    }
+  }
+
+  // ── ユーザー管理 ────────────────────────────────────────────
+
+  async function loadUsers() {
+    const listEl = document.getElementById('user-list');
+    listEl.innerHTML = '<div class="usage-loading" id="users-loading">読み込み中...</div>';
+
+    try {
+      const res = await fetch('/api/admin/users');
+      if (!res.ok) throw new Error('fetch failed');
+      const { users } = await res.json();
+
+      if (users.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">ユーザーがいません</div>';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      users.forEach(u => {
+        const row = document.createElement('div');
+        row.className = 'user-row';
+        row.id = 'user-row-' + u.id;
+
+        const tags = (u.communityNames || []).map(n =>
+          `<span class="community-tag">🔒 ${escapeHtml(n)}</span>`
+        ).join('');
+
+        const lastSeen = u.lastSeen ? formatDate(u.lastSeen) : '未アクセス';
+
+        row.innerHTML = `
+          <div class="user-row-top">
+            <div class="user-nickname">${escapeHtml(u.nickname)}</div>
+            <button class="btn-delete-sm" onclick="deleteUser('${u.id}', '${escapeHtml(u.nickname)}')">削除</button>
+          </div>
+          <div class="user-communities">${tags || '<span style="font-size:0.7rem;color:#7b5ea0">コミュニティなし</span>'}</div>
+          <div class="user-lastseen">最終アクセス: ${lastSeen}</div>
+        `;
+        listEl.appendChild(row);
+      });
+    } catch (e) {
+      listEl.innerHTML = '<div class="empty-state" style="color:#f87171">取得に失敗しました</div>';
+    }
+  }
+
+  async function deleteUser(userId, nickname) {
+    if (!confirm(`「${nickname}」を削除してもよろしいですか？`)) return;
+
+    try {
+      const res = await fetch('/api/admin/users/' + userId, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || '削除に失敗しました');
+        return;
+      }
+      loadUsers();
+    } catch (e) {
+      alert('ネットワークエラーが発生しました');
+    }
+  }
+
+  // ── ユーティリティ ──────────────────────────────────────────
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return d.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // 合言葉変更モーダル（廃止: インラインフォームを使用）
+  function closePwModal() {
+    document.getElementById('pw-change-modal').classList.remove('open');
+  }
+  function submitPwChange() {
+    closePwModal();
+  }
 </script>
 
 </body>

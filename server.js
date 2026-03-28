@@ -6,6 +6,7 @@ const QRCode = require('qrcode');
 const { spawn } = require('child_process');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json({ limit: '10kb' }));
@@ -17,11 +18,9 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  // HSTS（Renderは常にHTTPS）
   if (process.env.RENDER) {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }
-  // Content Security Policy
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
@@ -48,24 +47,18 @@ const ALLOWED_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.bmp', '.tiff', '.tif',
 ]);
 
-// Presigned URL 有効期限
-const UPLOAD_URL_EXPIRY  = 5 * 60;   // アップロード用: 5分
-const VIEW_URL_EXPIRY    = 30 * 60;  // 表示・ダウンロード用: 30分（CloudFront未使用時）
+const UPLOAD_URL_EXPIRY  = 5 * 60;
+const VIEW_URL_EXPIRY    = 30 * 60;
 
-// CloudFront ドメイン（設定済みなら閲覧URLをCloudFront経由にする）
 const CLOUDFRONT_DOMAIN = process.env.CLOUDFRONT_DOMAIN
   ? process.env.CLOUDFRONT_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '')
   : null;
 
-// 写真一覧キャッシュ TTL
-// CloudFront使用時: URLに有効期限がないため長めに設定可能
-// CloudFront未使用時: Presigned URLの有効期限内に収める
 const PHOTO_CACHE_TTL = CLOUDFRONT_DOMAIN ? 10 * 60 * 1000 : 25 * 60 * 1000;
 
 const s3Client = new S3Client({ region: REGION });
 
 // ── レート制限 ──────────────────────────────────────────────
-// 全 API 共通: 1分間に100リクエストまで
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -74,7 +67,6 @@ const generalLimiter = rateLimit({
   message: { error: 'リクエストが多すぎます。しばらく待ってからお試しください。' },
 });
 
-// アップロード用 Presigned URL: 1分間に20枚まで
 const uploadLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
@@ -83,12 +75,19 @@ const uploadLimiter = rateLimit({
   message: { error: 'アップロードリクエストが多すぎます。しばらく待ってからお試しください。' },
 });
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'ログイン試行が多すぎます。15分後に再試行してください。' },
+});
+
 app.use('/api/', generalLimiter);
 
 // ── 管理画面 Basic 認証 ──────────────────────────────────────
 function requireAdmin(req, res, next) {
   const adminPassword = process.env.ADMIN_PASSWORD;
-  // 環境変数未設定時はローカル開発用にスルー
   if (!adminPassword) return next();
 
   const authHeader = req.headers.authorization;
@@ -108,9 +107,122 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// ── ユーザーデータキャッシュ ──────────────────────────────────
+let usersCache = null;
+let usersCacheTime = 0;
+let commCache = null;
+let commCacheTime = 0;
+const DATA_CACHE_TTL = 30 * 1000;
+
+// ── S3 上のデータファイル読み書き ──────────────────────────────
+const USERS_KEY = 'data/users.json';
+const COMMUNITIES_KEY = 'data/communities.json';
+
+async function readUsers() {
+  const now = Date.now();
+  if (usersCache && (now - usersCacheTime) < DATA_CACHE_TTL) {
+    return usersCache;
+  }
+  try {
+    const data = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: USERS_KEY }));
+    const body = await data.Body.transformToString();
+    usersCache = JSON.parse(body);
+    usersCacheTime = now;
+    return usersCache;
+  } catch (_) {
+    return { users: [] };
+  }
+}
+
+async function writeUsers(data) {
+  usersCache = data;
+  usersCacheTime = Date.now();
+  await s3Client.send(new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: USERS_KEY,
+    Body: JSON.stringify(data),
+    ContentType: 'application/json',
+  }));
+}
+
+async function readCommunities() {
+  const now = Date.now();
+  if (commCache && (now - commCacheTime) < DATA_CACHE_TTL) {
+    return commCache;
+  }
+  try {
+    const data = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: COMMUNITIES_KEY }));
+    const body = await data.Body.transformToString();
+    commCache = JSON.parse(body);
+    commCacheTime = now;
+    return commCache;
+  } catch (_) {
+    return { communities: [] };
+  }
+}
+
+async function writeCommunities(data) {
+  commCache = data;
+  commCacheTime = Date.now();
+  await s3Client.send(new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: COMMUNITIES_KEY,
+    Body: JSON.stringify(data),
+    ContentType: 'application/json',
+  }));
+}
+
+function hashPassphrase(passphrase) {
+  return crypto.createHash('sha256').update('ws2026:' + passphrase).digest('hex');
+}
+
+// ── requireUser ミドルウェア ──────────────────────────────────
+async function requireUser(req, res, next) {
+  const h = req.headers.authorization;
+  if (!h?.startsWith('Bearer ')) return res.status(401).json({ error: 'ログインが必要です' });
+  const token = h.slice(7);
+  const { users } = await readUsers();
+  const user = users.find(u => u.sessions?.some(s => s.token === token));
+  if (!user) return res.status(401).json({ error: 'セッションが無効です' });
+  // lastSeen 更新（キャッシュ内のみ、バックグラウンドで保存）
+  user.lastSeen = new Date().toISOString();
+  req.user = user;
+  next();
+}
+
+// ── コミュニティ写真キャッシュ ────────────────────────────────
+const communityPhotoCache = new Map(); // communityId -> { photos, time }
+
+// ── 写真URLリスト生成ヘルパー ──────────────────────────────────
+async function buildPhotoList(objects) {
+  return Promise.all(objects.map(async (obj) => {
+    const viewUrl = CLOUDFRONT_DOMAIN
+      ? `https://${CLOUDFRONT_DOMAIN}/${obj.Key}`
+      : await getSignedUrl(s3Client, new GetObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: obj.Key,
+        }), { expiresIn: VIEW_URL_EXPIRY });
+
+    const downloadUrl = await getSignedUrl(s3Client, new GetObjectCommand({
+      Bucket: BUCKET_NAME,
+      Key: obj.Key,
+      ResponseContentDisposition: `attachment; filename="${path.basename(obj.Key)}"`,
+    }), { expiresIn: VIEW_URL_EXPIRY });
+
+    return {
+      key: obj.Key,
+      filename: path.basename(obj.Key),
+      viewUrl,
+      downloadUrl,
+      lastModified: obj.LastModified,
+      size: obj.Size,
+    };
+  }));
+}
+
 // トンネルURLを保持
 let tunnelUrl = null;
-let tunnelStatus = 'starting'; // 'starting' | 'ready' | 'error'
+let tunnelStatus = 'starting';
 
 // Cloudflare Quick Tunnel を起動
 function startCloudflaredTunnel() {
@@ -145,7 +257,6 @@ function startCloudflaredTunnel() {
     console.log(`cloudflared 終了 (code: ${code})`);
   });
 
-  // プロセス終了時にトンネルも終了
   process.on('exit', () => { try { cf.kill(); } catch (_) {} });
   process.on('SIGINT', () => { try { cf.kill(); } catch (_) {} process.exit(0); });
 }
@@ -174,26 +285,230 @@ async function configureBucketCors() {
   }
 }
 
-// ヘルスチェック（GitHub Pages の待機画面がポーリング）
+// ── ヘルスチェック ──────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.json({ ok: true });
 });
 
-// トンネルURL取得エンドポイント（管理画面がポーリング）
+// ── トンネルURL取得 ─────────────────────────────────────────
 app.get('/api/tunnel-status', requireAdmin, (req, res) => {
   res.json({ status: tunnelStatus, url: tunnelUrl });
 });
 
-// Presigned URL生成エンドポイント
-app.post('/api/presigned-url', uploadLimiter, async (req, res) => {
+// ── 認証API ─────────────────────────────────────────────────
+
+// POST /api/auth/login
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
-    const { filename, contentType } = req.body;
+    const { nickname, passphrase } = req.body;
+    if (!nickname || !passphrase) {
+      return res.status(400).json({ error: 'ニックネームと合言葉が必要です' });
+    }
+    if (typeof nickname !== 'string' || nickname.length > 50) {
+      return res.status(400).json({ error: 'ニックネームは50文字以内で入力してください' });
+    }
+    if (typeof passphrase !== 'string' || passphrase.length > 100) {
+      return res.status(400).json({ error: '合言葉が長すぎます' });
+    }
+
+    const hash = hashPassphrase(passphrase);
+    const { communities } = await readCommunities();
+    const community = communities.find(c => c.passphraseHash === hash);
+    if (!community) {
+      return res.status(401).json({ error: '合言葉が正しくありません' });
+    }
+
+    const { users } = await readUsers();
+    let token = crypto.randomBytes(32).toString('hex');
+
+    // 既存ユーザーを探す（同じニックネームで同コミュニティに参加済み）
+    let user = users.find(u =>
+      u.nickname === nickname &&
+      u.communityIds?.includes(community.id)
+    );
+
+    if (user) {
+      // セッション追加（最大10件、古いものを削除）
+      if (!user.sessions) user.sessions = [];
+      user.sessions.push({ token, createdAt: new Date().toISOString() });
+      if (user.sessions.length > 10) {
+        user.sessions = user.sessions.slice(user.sessions.length - 10);
+      }
+      user.lastSeen = new Date().toISOString();
+    } else {
+      // 新規ユーザー作成
+      user = {
+        id: uuidv4(),
+        nickname,
+        communityIds: [community.id],
+        sessions: [{ token, createdAt: new Date().toISOString() }],
+        createdAt: new Date().toISOString(),
+        lastSeen: new Date().toISOString(),
+      };
+      users.push(user);
+    }
+
+    await writeUsers({ users });
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        nickname: user.nickname,
+        communityIds: user.communityIds,
+      },
+    });
+  } catch (err) {
+    console.error('ログインエラー:', err);
+    res.status(500).json({ error: 'ログイン処理に失敗しました' });
+  }
+});
+
+// GET /api/auth/me
+app.get('/api/auth/me', requireUser, async (req, res) => {
+  try {
+    const { communities } = await readCommunities();
+    const myCommunities = communities.filter(c => req.user.communityIds?.includes(c.id));
+    res.json({
+      user: {
+        id: req.user.id,
+        nickname: req.user.nickname,
+        communityIds: req.user.communityIds || [],
+        communities: myCommunities.map(c => ({ id: c.id, name: c.name })),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: '情報取得に失敗しました' });
+  }
+});
+
+// POST /api/auth/join-community
+app.post('/api/auth/join-community', requireUser, async (req, res) => {
+  try {
+    const { passphrase } = req.body;
+    if (!passphrase) return res.status(400).json({ error: '合言葉が必要です' });
+
+    const hash = hashPassphrase(passphrase);
+    const { communities } = await readCommunities();
+    const community = communities.find(c => c.passphraseHash === hash);
+    if (!community) return res.status(401).json({ error: '合言葉が正しくありません' });
+
+    const { users } = await readUsers();
+    const user = users.find(u => u.id === req.user.id);
+    if (!user) return res.status(404).json({ error: 'ユーザーが見つかりません' });
+
+    if (!user.communityIds) user.communityIds = [];
+    if (!user.communityIds.includes(community.id)) {
+      user.communityIds.push(community.id);
+    }
+    user.lastSeen = new Date().toISOString();
+
+    await writeUsers({ users });
+    res.json({ ok: true, community: { id: community.id, name: community.name } });
+  } catch (err) {
+    res.status(500).json({ error: 'コミュニティ参加に失敗しました' });
+  }
+});
+
+// GET /api/communities/mine
+app.get('/api/communities/mine', requireUser, async (req, res) => {
+  try {
+    const { communities } = await readCommunities();
+    const mine = communities.filter(c => req.user.communityIds?.includes(c.id));
+    res.json({ communities: mine.map(c => ({ id: c.id, name: c.name })) });
+  } catch (err) {
+    res.status(500).json({ error: 'コミュニティ一覧取得に失敗しました' });
+  }
+});
+
+// ── 写真API ──────────────────────────────────────────────────
+
+// 写真一覧キャッシュ
+let photoCache = null;
+let photoCacheTime = 0;
+
+// GET /api/photos (公開写真のみ、コミュニティ写真を除外)
+app.get('/api/photos', requireUser, async (req, res) => {
+  const forceRefresh = req.query.refresh === '1';
+  const now = Date.now();
+
+  if (!forceRefresh && photoCache && (now - photoCacheTime) < PHOTO_CACHE_TTL) {
+    return res.json({ photos: photoCache, cached: true });
+  }
+
+  try {
+    // 旧パス uploads/ と新パス uploads/public/ の両方を取得
+    const [oldData, newData] = await Promise.all([
+      s3Client.send(new ListObjectsV2Command({ Bucket: BUCKET_NAME, Prefix: 'uploads/' })),
+      // ↑ uploads/ 全体を取得し、community/ を除外する
+    ]);
+
+    const allObjects = (oldData.Contents || []).filter(obj => {
+      if (obj.Key.endsWith('/')) return false;
+      // uploads/community/ は除外
+      if (obj.Key.startsWith('uploads/community/')) return false;
+      return true;
+    });
+
+    allObjects.sort((a, b) => b.LastModified - a.LastModified);
+
+    const photos = await buildPhotoList(allObjects);
+
+    photoCache = photos;
+    photoCacheTime = now;
+    res.json({ photos, cached: false });
+  } catch (err) {
+    console.error('写真一覧取得エラー:', err);
+    res.status(500).json({ error: '写真一覧の取得に失敗しました' });
+  }
+});
+
+// GET /api/photos/community/:communityId
+app.get('/api/photos/community/:communityId', requireUser, async (req, res) => {
+  const { communityId } = req.params;
+  if (!/^[0-9a-f-]{36}$/.test(communityId)) {
+    return res.status(400).json({ error: '無効なコミュニティIDです' });
+  }
+
+  // 参加確認
+  if (!req.user.communityIds?.includes(communityId)) {
+    return res.status(403).json({ error: 'このコミュニティに参加していません' });
+  }
+
+  const forceRefresh = req.query.refresh === '1';
+  const now = Date.now();
+  const cached = communityPhotoCache.get(communityId);
+  if (!forceRefresh && cached && (now - cached.time) < PHOTO_CACHE_TTL) {
+    return res.json({ photos: cached.photos, cached: true });
+  }
+
+  try {
+    const data = await s3Client.send(new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: `uploads/community/${communityId}/`,
+    }));
+
+    const objects = (data.Contents || []).filter(obj => !obj.Key.endsWith('/'));
+    objects.sort((a, b) => b.LastModified - a.LastModified);
+
+    const photos = await buildPhotoList(objects);
+    communityPhotoCache.set(communityId, { photos, time: now });
+    res.json({ photos, cached: false });
+  } catch (err) {
+    console.error('コミュニティ写真取得エラー:', err);
+    res.status(500).json({ error: 'コミュニティ写真の取得に失敗しました' });
+  }
+});
+
+// POST /api/presigned-url
+app.post('/api/presigned-url', uploadLimiter, requireUser, async (req, res) => {
+  try {
+    const { filename, contentType, communityId } = req.body;
     if (!filename || !contentType) {
       return res.status(400).json({ error: 'filename と contentType が必要です' });
     }
 
-    // ファイルタイプ検証（画像のみ許可）
     if (!ALLOWED_CONTENT_TYPES.has(contentType.toLowerCase())) {
       return res.status(400).json({ error: '画像ファイルのみアップロードできます' });
     }
@@ -202,7 +517,20 @@ app.post('/api/presigned-url', uploadLimiter, async (req, res) => {
       return res.status(400).json({ error: '対応していないファイル形式です' });
     }
 
-    const key = `uploads/${new Date().toISOString().slice(0, 10)}/${uuidv4()}${ext}`;
+    let key;
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    if (communityId) {
+      if (!/^[0-9a-f-]{36}$/.test(communityId)) {
+        return res.status(400).json({ error: '無効なコミュニティIDです' });
+      }
+      if (!req.user.communityIds?.includes(communityId)) {
+        return res.status(403).json({ error: 'このコミュニティに参加していません' });
+      }
+      key = `uploads/community/${communityId}/${dateStr}/${uuidv4()}${ext}`;
+    } else {
+      key = `uploads/public/${dateStr}/${uuidv4()}${ext}`;
+    }
 
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
@@ -218,12 +546,177 @@ app.post('/api/presigned-url', uploadLimiter, async (req, res) => {
   }
 });
 
-// QRコード生成エンドポイント（管理画面専用）
+// POST /api/track-download
+app.post('/api/track-download', requireUser, async (req, res) => {
+  try {
+    const { key, size } = req.body;
+    if (!key || typeof size !== 'number' || size < 0 || size > 500 * 1024 * 1024) {
+      return res.status(400).json({ error: '無効なパラメータです' });
+    }
+    const stats = await readDownloadStats();
+    stats.totalDownloads = (stats.totalDownloads || 0) + 1;
+    stats.totalBytes     = (stats.totalBytes     || 0) + size;
+    stats.lastUpdated    = new Date().toISOString();
+    await writeDownloadStats(stats);
+    res.json({ ok: true });
+  } catch (_) {
+    res.json({ ok: true });
+  }
+});
+
+// POST /api/invalidate-cache
+app.post('/api/invalidate-cache', requireUser, (req, res) => {
+  photoCache = null;
+  photoCacheTime = 0;
+  communityPhotoCache.clear();
+  res.json({ ok: true });
+});
+
+// ── 管理者API ────────────────────────────────────────────────
+
+// GET /api/admin/communities
+app.get('/api/admin/communities', requireAdmin, async (req, res) => {
+  try {
+    const { communities } = await readCommunities();
+    res.json({ communities: communities.map(c => ({ id: c.id, name: c.name, createdAt: c.createdAt })) });
+  } catch (err) {
+    res.status(500).json({ error: 'コミュニティ一覧取得に失敗しました' });
+  }
+});
+
+// POST /api/admin/communities
+app.post('/api/admin/communities', requireAdmin, async (req, res) => {
+  try {
+    const { name, passphrase } = req.body;
+    if (!name || !passphrase) return res.status(400).json({ error: '名前と合言葉が必要です' });
+    if (typeof name !== 'string' || name.length > 50) return res.status(400).json({ error: '名前は50文字以内で入力してください' });
+    if (typeof passphrase !== 'string' || passphrase.length > 100) return res.status(400).json({ error: '合言葉が長すぎます' });
+
+    const { communities } = await readCommunities();
+    const community = {
+      id: uuidv4(),
+      name,
+      passphraseHash: hashPassphrase(passphrase),
+      createdAt: new Date().toISOString(),
+    };
+    communities.push(community);
+    await writeCommunities({ communities });
+    res.json({ community: { id: community.id, name: community.name, createdAt: community.createdAt } });
+  } catch (err) {
+    res.status(500).json({ error: 'コミュニティ作成に失敗しました' });
+  }
+});
+
+// PUT /api/admin/communities/:id
+app.put('/api/admin/communities/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) return res.status(400).json({ error: '無効なIDです' });
+
+    const { name, passphrase } = req.body;
+    const { communities } = await readCommunities();
+    const community = communities.find(c => c.id === id);
+    if (!community) return res.status(404).json({ error: 'コミュニティが見つかりません' });
+
+    if (name) {
+      if (typeof name !== 'string' || name.length > 50) return res.status(400).json({ error: '名前は50文字以内で入力してください' });
+      community.name = name;
+    }
+
+    if (passphrase) {
+      if (typeof passphrase !== 'string' || passphrase.length > 100) return res.status(400).json({ error: '合言葉が長すぎます' });
+      community.passphraseHash = hashPassphrase(passphrase);
+
+      // パスフレーズ変更時: メンバーのcommunityIds削除 + sessions全クリア
+      const { users } = await readUsers();
+      for (const user of users) {
+        if (user.communityIds?.includes(id)) {
+          user.communityIds = user.communityIds.filter(cid => cid !== id);
+          user.sessions = [];
+        }
+      }
+      await writeUsers({ users });
+    }
+
+    await writeCommunities({ communities });
+    res.json({ community: { id: community.id, name: community.name, createdAt: community.createdAt } });
+  } catch (err) {
+    res.status(500).json({ error: 'コミュニティ更新に失敗しました' });
+  }
+});
+
+// DELETE /api/admin/communities/:id
+app.delete('/api/admin/communities/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) return res.status(400).json({ error: '無効なIDです' });
+
+    const { communities } = await readCommunities();
+    const idx = communities.findIndex(c => c.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'コミュニティが見つかりません' });
+
+    communities.splice(idx, 1);
+    await writeCommunities({ communities });
+
+    // ユーザーからコミュニティ削除
+    const { users } = await readUsers();
+    for (const user of users) {
+      if (user.communityIds?.includes(id)) {
+        user.communityIds = user.communityIds.filter(cid => cid !== id);
+      }
+    }
+    await writeUsers({ users });
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'コミュニティ削除に失敗しました' });
+  }
+});
+
+// GET /api/admin/users
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
+  try {
+    const [{ users }, { communities }] = await Promise.all([readUsers(), readCommunities()]);
+    const communityMap = Object.fromEntries(communities.map(c => [c.id, c.name]));
+
+    res.json({
+      users: users.map(u => ({
+        id: u.id,
+        nickname: u.nickname,
+        communityIds: u.communityIds || [],
+        communityNames: (u.communityIds || []).map(id => communityMap[id] || '(削除済み)'),
+        lastSeen: u.lastSeen,
+        createdAt: u.createdAt,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'ユーザー一覧取得に失敗しました' });
+  }
+});
+
+// DELETE /api/admin/users/:id
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!/^[0-9a-f-]{36}$/.test(id)) return res.status(400).json({ error: '無効なIDです' });
+
+    const { users } = await readUsers();
+    const idx = users.findIndex(u => u.id === id);
+    if (idx === -1) return res.status(404).json({ error: 'ユーザーが見つかりません' });
+
+    users.splice(idx, 1);
+    await writeUsers({ users });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'ユーザー削除に失敗しました' });
+  }
+});
+
+// QRコード生成エンドポイント
 app.get('/api/qrcode', requireAdmin, async (req, res) => {
   try {
     const rawUrl = req.query.url || tunnelUrl || `http://localhost:${PORT}`;
 
-    // URLバリデーション（http / https のみ許可）
     let validatedUrl;
     try {
       const parsed = new URL(rawUrl);
@@ -246,65 +739,7 @@ app.get('/api/qrcode', requireAdmin, async (req, res) => {
   }
 });
 
-// 写真一覧キャッシュ
-let photoCache = null;
-let photoCacheTime = 0;
-
-// 写真一覧取得エンドポイント
-app.get('/api/photos', async (req, res) => {
-  const forceRefresh = req.query.refresh === '1';
-  const now = Date.now();
-
-  if (!forceRefresh && photoCache && (now - photoCacheTime) < PHOTO_CACHE_TTL) {
-    return res.json({ photos: photoCache, cached: true });
-  }
-
-  try {
-    const listCommand = new ListObjectsV2Command({
-      Bucket: BUCKET_NAME,
-      Prefix: 'uploads/',
-    });
-    const data = await s3Client.send(listCommand);
-
-    const objects = (data.Contents || []).filter(obj => !obj.Key.endsWith('/'));
-    objects.sort((a, b) => b.LastModified - a.LastModified);
-
-    const photos = await Promise.all(objects.map(async (obj) => {
-      // 閲覧URL: CloudFront設定済みならCDN経由（高速・安価）、未設定ならS3 Presigned URL
-      const viewUrl = CLOUDFRONT_DOMAIN
-        ? `https://${CLOUDFRONT_DOMAIN}/${obj.Key}`
-        : await getSignedUrl(s3Client, new GetObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: obj.Key,
-          }), { expiresIn: VIEW_URL_EXPIRY });
-
-      // ダウンロードURL: ファイル名を付与するためS3 Presigned URLを使用
-      const downloadUrl = await getSignedUrl(s3Client, new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: obj.Key,
-        ResponseContentDisposition: `attachment; filename="${path.basename(obj.Key)}"`,
-      }), { expiresIn: VIEW_URL_EXPIRY });
-
-      return {
-        key: obj.Key,
-        filename: path.basename(obj.Key),
-        viewUrl,
-        downloadUrl,
-        lastModified: obj.LastModified,
-        size: obj.Size,
-      };
-    }));
-
-    photoCache = photos;
-    photoCacheTime = now;
-    res.json({ photos, cached: false });
-  } catch (err) {
-    console.error('写真一覧取得エラー:', err);
-    res.status(500).json({ error: '写真一覧の取得に失敗しました' });
-  }
-});
-
-// ── ダウンロード統計（S3に永続保存）──────────────────────────
+// ── ダウンロード統計 ──────────────────────────────────────────
 const STATS_KEY = 'stats/downloads.json';
 
 async function readDownloadStats() {
@@ -326,39 +761,19 @@ async function writeDownloadStats(stats) {
   }));
 }
 
-// ダウンロードトラッキング（gallery.html から呼ばれる）
-app.post('/api/track-download', async (req, res) => {
-  try {
-    const { key, size } = req.body;
-    if (!key || typeof size !== 'number' || size < 0 || size > 500 * 1024 * 1024) {
-      return res.status(400).json({ error: '無効なパラメータです' });
-    }
-    const stats = await readDownloadStats();
-    stats.totalDownloads = (stats.totalDownloads || 0) + 1;
-    stats.totalBytes     = (stats.totalBytes     || 0) + size;
-    stats.lastUpdated    = new Date().toISOString();
-    await writeDownloadStats(stats);
-    res.json({ ok: true });
-  } catch (_) {
-    res.json({ ok: true }); // ユーザー体験を壊さないよう常に200を返す
-  }
-});
-
-// S3 使用量取得エンドポイント（管理画面専用）
-const S3_FREE_TIER_BYTES      = 5 * 1024 * 1024 * 1024;   // ストレージ無料枠: 5 GB
-const S3_STORAGE_PRICE_PER_GB = 0.025;                      // USD/GB（ap-northeast-1）
-const DT_FREE_TIER_BYTES      = 100 * 1024 * 1024 * 1024;  // 転送無料枠: 100 GB/月
-const DT_PRICE_PER_GB         = 0.09;                       // USD/GB（ap-northeast-1）
+// S3 使用量取得エンドポイント
+const S3_FREE_TIER_BYTES      = 5 * 1024 * 1024 * 1024;
+const S3_STORAGE_PRICE_PER_GB = 0.025;
+const DT_FREE_TIER_BYTES      = 100 * 1024 * 1024 * 1024;
+const DT_PRICE_PER_GB         = 0.09;
 
 app.get('/api/s3-usage', requireAdmin, async (req, res) => {
   try {
-    // ストレージ集計とダウンロード統計を並行取得
     let totalBytes = 0;
     let totalCount = 0;
     let continuationToken = undefined;
 
     const [, dlStats] = await Promise.all([
-      // 1000件超でもすべて取得（ページネーション）
       (async () => {
         do {
           const cmd = new ListObjectsV2Command({
@@ -376,13 +791,11 @@ app.get('/api/s3-usage', requireAdmin, async (req, res) => {
       readDownloadStats(),
     ]);
 
-    // ストレージ
     const storageRemain   = Math.max(0, S3_FREE_TIER_BYTES - totalBytes);
     const storageUsedPct  = Math.min(100, (totalBytes / S3_FREE_TIER_BYTES) * 100);
     const storageOverGB   = Math.max(0, totalBytes - S3_FREE_TIER_BYTES) / (1024 ** 3);
     const storageCost     = storageOverGB * S3_STORAGE_PRICE_PER_GB;
 
-    // ダウンロード（データ転送アウト）
     const dlBytes         = dlStats.totalBytes || 0;
     const dlRemain        = Math.max(0, DT_FREE_TIER_BYTES - dlBytes);
     const dlUsedPct       = Math.min(100, (dlBytes / DT_FREE_TIER_BYTES) * 100);
@@ -390,7 +803,6 @@ app.get('/api/s3-usage', requireAdmin, async (req, res) => {
     const dlCost          = dlOverGB * DT_PRICE_PER_GB;
 
     res.json({
-      // ストレージ
       storage: {
         totalBytes,
         totalCount,
@@ -400,7 +812,6 @@ app.get('/api/s3-usage', requireAdmin, async (req, res) => {
         isOverFreeTier: totalBytes > S3_FREE_TIER_BYTES,
         estimatedCostUSD: Math.round(storageCost * 10000) / 10000,
       },
-      // ダウンロード転送量
       transfer: {
         totalDownloads: dlStats.totalDownloads || 0,
         totalBytes: dlBytes,
@@ -418,19 +829,19 @@ app.get('/api/s3-usage', requireAdmin, async (req, res) => {
   }
 });
 
-// 写真アップロード後にキャッシュを破棄
-app.post('/api/invalidate-cache', (req, res) => {
-  photoCache = null;
-  photoCacheTime = 0;
-  res.json({ ok: true });
+// ── ルーティング ──────────────────────────────────────────────
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// ギャラリーページ
 app.get('/gallery', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
 });
 
-// 管理画面
+app.get('/gallery/community', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'community-gallery.html'));
+});
+
 app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
@@ -440,7 +851,6 @@ app.listen(PORT, async () => {
   console.log(`サーバー起動: http://localhost:${PORT}`);
   console.log(`管理画面:     http://localhost:${PORT}/admin`);
 
-  // Render.com上ではcloudflaredは不要。固定URLをそのまま使用する
   if (process.env.RENDER) {
     tunnelUrl = process.env.RENDER_EXTERNAL_URL || `https://${process.env.RENDER_SERVICE_NAME}.onrender.com`;
     tunnelStatus = 'ready';

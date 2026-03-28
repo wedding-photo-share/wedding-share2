@@ -37,7 +37,7 @@
       -webkit-backdrop-filter: blur(24px);
       border-bottom: 1px solid var(--glass-border);
       text-align: center;
-      padding: 20px 16px 14px;
+      padding: 16px 16px 12px;
     }
 
     header h1 {
@@ -51,10 +51,52 @@
       line-height: 1.2;
     }
 
-    header p {
+    .header-sub {
       font-size: 0.76rem;
       color: var(--muted);
-      margin-top: 5px;
+      margin-top: 3px;
+      font-weight: 400;
+    }
+
+    .header-actions {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-sm {
+      padding: 7px 16px;
+      border-radius: 12px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.76rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      border: none;
+      transition: transform 0.12s;
+    }
+
+    .btn-sm:active { transform: scale(0.96); }
+
+    .btn-community {
+      background: var(--grad);
+      color: #fff;
+      box-shadow: 0 3px 12px var(--glow);
+    }
+
+    .btn-logout {
+      background: var(--glass);
+      color: var(--muted);
+      border: 1.5px solid rgba(157, 114, 184, 0.3);
+    }
+
+    #user-name-display {
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-top: 3px;
       font-weight: 400;
     }
 
@@ -64,7 +106,94 @@
       max-width: 480px;
       width: 100%;
       margin: 0 auto;
-      padding: 28px 18px 36px;
+      padding: 20px 18px 36px;
+    }
+
+    /* ── Destination selector ────── */
+    .dest-selector {
+      margin-bottom: 14px;
+    }
+
+    .dest-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+    }
+
+    .dest-options {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .dest-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--glass);
+      border: 1.5px solid var(--glass-border);
+      border-radius: 14px;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: border-color 0.15s, background 0.15s;
+      text-align: left;
+    }
+
+    .dest-option:active { transform: scale(0.98); }
+
+    .dest-option.selected {
+      border-color: rgba(219, 39, 119, 0.5);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 12px rgba(219, 39, 119, 0.12);
+    }
+
+    .dest-option.selected-community {
+      border-color: rgba(124, 58, 237, 0.5);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 2px 12px rgba(124, 58, 237, 0.12);
+    }
+
+    .dest-radio {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid rgba(157, 114, 184, 0.4);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dest-option.selected .dest-radio,
+    .dest-option.selected-community .dest-radio {
+      border-color: #db2777;
+      background: #db2777;
+    }
+
+    .dest-option.selected-community .dest-radio {
+      border-color: #7c3aed;
+      background: #7c3aed;
+    }
+
+    .dest-radio::after {
+      content: '';
+      width: 7px;
+      height: 7px;
+      background: white;
+      border-radius: 50%;
+      display: none;
+    }
+
+    .dest-option.selected .dest-radio::after,
+    .dest-option.selected-community .dest-radio::after {
+      display: block;
     }
 
     /* ── Drop area ──────────────── */
@@ -343,13 +472,38 @@
 </head>
 <body>
 
+<script>
+  // 認証チェック（先頭で実行）
+  (function() {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      location.replace('/login?redirect=' + encodeURIComponent(location.pathname + location.search));
+    }
+  })();
+</script>
+
 <header>
   <h1>Wedding Photo Share</h1>
-  <p>思い出の写真をシェアしてください</p>
+  <div class="header-sub" id="user-name-display">読み込み中...</div>
+  <div class="header-actions" id="header-actions">
+    <button class="btn-sm btn-community" id="btn-community-gallery" style="display:none" onclick="location.href='/gallery/community?id=' + encodeURIComponent(window._communities[0]?.id || '')">コミュニティ写真</button>
+    <button class="btn-sm btn-logout" onclick="doLogout()">ログアウト</button>
+  </div>
 </header>
 
 <main>
   <div id="upload-section">
+    <!-- 投稿先セレクター -->
+    <div class="dest-selector" id="dest-selector" style="display:none">
+      <div class="dest-label">投稿先</div>
+      <div class="dest-options" id="dest-options">
+        <button class="dest-option selected" data-community-id="" onclick="selectDest(this)">
+          <div class="dest-radio"></div>
+          <span>🌸 全員に公開</span>
+        </button>
+      </div>
+    </div>
+
     <div class="drop-area" onclick="document.getElementById('fileInput').click()">
       <div class="camera-ring">
         <svg viewBox="0 0 24 24">
@@ -393,6 +547,100 @@
 </footer>
 
 <script>
+  // authFetch: 401時に自動ログアウト
+  async function authFetch(url, options = {}) {
+    const token = localStorage.getItem('authToken');
+    const headers = {
+      ...(options.headers || {}),
+      'Authorization': 'Bearer ' + token,
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      localStorage.removeItem('authToken');
+      location.replace('/login?redirect=' + encodeURIComponent(location.pathname + location.search));
+      throw new Error('認証エラー');
+    }
+    return res;
+  }
+
+  function doLogout() {
+    localStorage.removeItem('authToken');
+    location.replace('/login');
+  }
+
+  window._communities = [];
+  let selectedCommunityId = null; // null = 公開
+
+  // ページロード時に認証情報取得
+  async function initPage() {
+    try {
+      const res = await authFetch('/api/auth/me');
+      const data = await res.json();
+      const user = data.user;
+
+      document.getElementById('user-name-display').textContent = user.nickname + ' さん、おかえりなさい';
+
+      if (user.communities && user.communities.length > 0) {
+        window._communities = user.communities;
+
+        // コミュニティ写真ボタン表示（コミュニティがある場合のみ）
+        document.getElementById('btn-community-gallery').style.display = 'inline-block';
+
+        // 投稿先セレクター構築
+        const destOptions = document.getElementById('dest-options');
+        const destSelector = document.getElementById('dest-selector');
+
+        // コミュニティオプション追加
+        user.communities.forEach(community => {
+          const btn = document.createElement('button');
+          btn.className = 'dest-option';
+          btn.dataset.communityId = community.id;
+          btn.onclick = function() { selectDest(this); };
+          btn.innerHTML = `<div class="dest-radio"></div><span>🔒 ${community.name} だけに共有</span>`;
+          destOptions.appendChild(btn);
+        });
+
+        destSelector.style.display = 'block';
+
+        // URLパラメータで指定されたコミュニティを自動選択
+        if (window._preselectedCommunityId) {
+          const targetBtn = document.querySelector(`.dest-option[data-community-id="${window._preselectedCommunityId}"]`);
+          if (targetBtn) selectDest(targetBtn);
+        }
+      }
+    } catch (err) {
+      if (err.message !== '認証エラー') {
+        document.getElementById('user-name-display').textContent = '';
+      }
+    }
+  }
+
+  function selectDest(btn) {
+    document.querySelectorAll('.dest-option').forEach(el => {
+      el.classList.remove('selected', 'selected-community');
+    });
+    const communityId = btn.dataset.communityId;
+    selectedCommunityId = communityId || null;
+    if (communityId) {
+      btn.classList.add('selected-community');
+    } else {
+      btn.classList.add('selected');
+    }
+  }
+
+  // URLパラメータからcommunityIdを読んで投稿先を自動選択
+  (function() {
+    const urlParams = new URLSearchParams(location.search);
+    const preselectedCommunityId = urlParams.get('communityId');
+    if (preselectedCommunityId) {
+      window._preselectedCommunityId = preselectedCommunityId;
+    }
+  })();
+
+  initPage();
+
+  // ── アップロード処理 ──────────────────────────────────────────
+
   const fileInput = document.getElementById('fileInput');
   const previewSection = document.getElementById('preview-section');
   const previewGrid = document.getElementById('preview-grid');
@@ -474,10 +722,15 @@
       overlayIcon.textContent = '⏳';
 
       try {
-        const res = await fetch('/api/presigned-url', {
+        const body = { filename: file.name, contentType: file.type || 'image/jpeg' };
+        if (selectedCommunityId) {
+          body.communityId = selectedCommunityId;
+        }
+
+        const res = await authFetch('/api/presigned-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: file.name, contentType: file.type || 'image/jpeg' }),
+          body: JSON.stringify(body),
         });
 
         if (!res.ok) throw new Error('URL取得失敗');
@@ -496,6 +749,7 @@
         overlayIcon.textContent = '✓';
         completed++;
       } catch (err) {
+        if (err.message === '認証エラー') return;
         item.classList.remove('uploading');
         item.classList.add('error');
         overlayIcon.textContent = '✗';
@@ -511,7 +765,7 @@
     progressText.textContent = `完了: ${completed} 枚成功${failed > 0 ? ` / ${failed} 枚失敗` : ''}`;
 
     if (completed > 0) {
-      fetch('/api/invalidate-cache', { method: 'POST' }).catch(() => {});
+      authFetch('/api/invalidate-cache', { method: 'POST' }).catch(() => {});
     }
 
     setTimeout(() => {

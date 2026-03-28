@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>ログイン - Wedding Photo Share</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --grad: linear-gradient(135deg, #7c3aed 0%, #db2777 55%, #ea580c 100%);
+      --grad-soft: linear-gradient(150deg, #f3e8ff 0%, #fce7f3 50%, #fff0e6 100%);
+      --text: #1e0a2e;
+      --muted: #9d72b8;
+      --glass: rgba(255, 255, 255, 0.82);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --shadow: rgba(124, 58, 237, 0.16);
+      --glow: rgba(219, 39, 119, 0.32);
+    }
+
+    body {
+      font-family: 'Poppins', -apple-system, sans-serif;
+      background: var(--grad-soft);
+      background-attachment: fixed;
+      min-height: 100vh;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .logo h1 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+
+    .logo p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 6px;
+      font-weight: 400;
+    }
+
+    .card {
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      box-shadow: 0 8px 40px var(--shadow);
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .card-subtitle {
+      font-size: 0.76rem;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 24px;
+      font-weight: 400;
+    }
+
+    .field {
+      margin-bottom: 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 7px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.7);
+      border: 1.5px solid rgba(167, 139, 250, 0.25);
+      border-radius: 14px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.92rem;
+      color: var(--text);
+      font-weight: 400;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+
+    .field input::placeholder {
+      color: rgba(157, 114, 184, 0.6);
+    }
+
+    .field input:focus {
+      border-color: rgba(219, 39, 119, 0.4);
+      box-shadow: 0 0 0 3px rgba(219, 39, 119, 0.08);
+    }
+
+    .btn-login {
+      width: 100%;
+      margin-top: 8px;
+      padding: 14px;
+      background: var(--grad);
+      color: #fff;
+      border: none;
+      border-radius: 16px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.96rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.2px;
+      box-shadow: 0 8px 24px var(--glow);
+      transition: transform 0.12s, box-shadow 0.12s;
+    }
+
+    .btn-login:active {
+      transform: scale(0.97);
+      box-shadow: 0 4px 12px var(--glow);
+    }
+
+    .btn-login:disabled {
+      background: linear-gradient(135deg, #c4b0e0, #e0a0c8);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .error-msg {
+      display: none;
+      background: rgba(220, 38, 38, 0.08);
+      border: 1px solid rgba(220, 38, 38, 0.2);
+      color: #dc2626;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      margin-top: 14px;
+      text-align: center;
+    }
+
+    .join-link {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .join-link p {
+      font-size: 0.76rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .join-link a {
+      font-size: 0.8rem;
+      color: #db2777;
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .join-link a:hover {
+      text-decoration: underline;
+    }
+
+    /* モーダル */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 0, 20, 0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      box-shadow: 0 16px 60px rgba(124, 58, 237, 0.25);
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .modal h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    .modal p {
+      font-size: 0.76rem;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn-cancel {
+      flex: 1;
+      padding: 11px;
+      background: transparent;
+      color: var(--muted);
+      border: 1.5px solid rgba(157, 114, 184, 0.3);
+      border-radius: 14px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-join {
+      flex: 1;
+      padding: 11px;
+      background: var(--grad);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 14px var(--glow);
+    }
+  </style>
+</head>
+<body>
+
+<div class="logo">
+  <h1>Wedding Photo Share</h1>
+  <p>ログインして写真をシェアしましょう</p>
+</div>
+
+<div class="card">
+  <div class="card-title">ようこそ</div>
+  <div class="card-subtitle">ニックネームと合言葉を入力してください</div>
+
+  <div class="field">
+    <label>ニックネーム</label>
+    <input type="text" id="nickname-input" placeholder="例: 田中" maxlength="50" autocomplete="nickname">
+  </div>
+
+  <div class="field">
+    <label>合言葉</label>
+    <input type="password" id="passphrase-input" placeholder="主催者から教えてもらった合言葉" maxlength="100" autocomplete="current-password">
+  </div>
+
+  <button class="btn-login" id="login-btn" onclick="doLogin()">ログイン</button>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <div class="join-link">
+    <p>ログイン後に別のグループに参加する場合</p>
+    <a onclick="openJoinModal()">別のコミュニティに参加する</a>
+  </div>
+</div>
+
+<!-- 別コミュニティ参加モーダル（ログイン後用） -->
+<div class="modal-overlay" id="join-modal">
+  <div class="modal">
+    <h3>別のコミュニティに参加</h3>
+    <p>参加したいグループの合言葉を入力してください</p>
+    <div class="field">
+      <label>合言葉</label>
+      <input type="password" id="join-passphrase" placeholder="合言葉" maxlength="100">
+    </div>
+    <div class="error-msg" id="join-error-msg" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeJoinModal()">キャンセル</button>
+      <button class="btn-join" onclick="doJoin()">参加する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // リダイレクト先を取得
+  function getRedirectUrl() {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
+    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+      return redirect;
+    }
+    return '/';
+  }
+
+  // 既存トークンチェック
+  async function checkExistingAuth() {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token },
+      });
+      if (res.ok) {
+        location.replace(getRedirectUrl());
+      }
+    } catch (_) {}
+  }
+
+  checkExistingAuth();
+
+  // エンターキー対応
+  document.getElementById('passphrase-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('nickname-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('passphrase-input').focus();
+  });
+
+  async function doLogin() {
+    const nickname = document.getElementById('nickname-input').value.trim();
+    const passphrase = document.getElementById('passphrase-input').value;
+    const errorMsg = document.getElementById('error-msg');
+    const loginBtn = document.getElementById('login-btn');
+
+    errorMsg.style.display = 'none';
+
+    if (!nickname) {
+      errorMsg.textContent = 'ニックネームを入力してください';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    if (!passphrase) {
+      errorMsg.textContent = '合言葉を入力してください';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = 'ログイン中...';
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nickname, passphrase }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errorMsg.textContent = data.error || 'ログインに失敗しました';
+        errorMsg.style.display = 'block';
+        return;
+      }
+
+      localStorage.setItem('authToken', data.token);
+      location.replace(getRedirectUrl());
+    } catch (err) {
+      errorMsg.textContent = 'ネットワークエラーが発生しました';
+      errorMsg.style.display = 'block';
+    } finally {
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'ログイン';
+    }
+  }
+
+  function openJoinModal() {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      const errorMsg = document.getElementById('error-msg');
+      errorMsg.textContent = 'まずログインしてください';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    document.getElementById('join-modal').classList.add('open');
+  }
+
+  function closeJoinModal() {
+    document.getElementById('join-modal').classList.remove('open');
+    document.getElementById('join-passphrase').value = '';
+    document.getElementById('join-error-msg').style.display = 'none';
+  }
+
+  async function doJoin() {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    const passphrase = document.getElementById('join-passphrase').value;
+    const joinErrorMsg = document.getElementById('join-error-msg');
+    joinErrorMsg.style.display = 'none';
+
+    if (!passphrase) {
+      joinErrorMsg.textContent = '合言葉を入力してください';
+      joinErrorMsg.style.display = 'block';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/join-community', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+        },
+        body: JSON.stringify({ passphrase }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        joinErrorMsg.textContent = data.error || '参加に失敗しました';
+        joinErrorMsg.style.display = 'block';
+        return;
+      }
+
+      closeJoinModal();
+      alert(`「${data.community.name}」に参加しました！`);
+    } catch (err) {
+      joinErrorMsg.textContent = 'ネットワークエラーが発生しました';
+      joinErrorMsg.style.display = 'block';
+    }
+  }
+
+  document.getElementById('join-modal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('join-modal')) closeJoinModal();
+  });
+</script>
+
+</body>
+</html>
