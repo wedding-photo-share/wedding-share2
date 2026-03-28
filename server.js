@@ -27,8 +27,8 @@ app.use((req, res, next) => {
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https://*.amazonaws.com",
-    "connect-src 'self' https://*.amazonaws.com https://*.onrender.com",
+    "img-src 'self' data: blob: https://*.amazonaws.com https://*.cloudfront.net",
+    "connect-src 'self' https://*.amazonaws.com https://*.onrender.com https://*.cloudfront.net",
     "frame-ancestors 'none'",
   ].join('; '));
   next();
