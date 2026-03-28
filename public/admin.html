@@ -699,7 +699,7 @@
     <div class="card">
       <div class="field-label">公開URL</div>
       <div class="url-row">
-        <input type="text" id="url-input" placeholder="トンネル起動待ち..." readonly />
+        <input type="text" id="url-input" placeholder="https://..." />
         <button onclick="generateQR()">QR生成</button>
       </div>
     </div>
@@ -847,6 +847,8 @@
   let pollingTimer = null;
   let tunnelReady = false;
 
+  const GITHUB_PAGES_URL = 'https://wedding-photo-share.github.io/wedding-share2/';
+
   async function pollTunnelStatus() {
     try {
       const res = await fetch('/api/tunnel-status');
@@ -854,24 +856,18 @@
 
       const dot = document.getElementById('status-dot');
       const text = document.getElementById('status-text');
-      const input = document.getElementById('url-input');
 
       if (data.status === 'ready' && data.url) {
         dot.className = 'status-dot ready';
-        text.textContent = `接続中: ${data.url}`;
-        input.value = data.url;
-        input.removeAttribute('readonly');
+        text.textContent = `サーバー接続中`;
 
         if (!tunnelReady) {
           tunnelReady = true;
           clearInterval(pollingTimer);
-          generateQR(data.url);
         }
       } else if (data.status === 'error') {
         dot.className = 'status-dot error';
-        text.textContent = 'トンネル起動に失敗しました。手動でURLを入力してください。';
-        input.removeAttribute('readonly');
-        input.placeholder = 'https://...';
+        text.textContent = 'サーバー接続エラー';
         clearInterval(pollingTimer);
       }
     } catch (e) {}
@@ -911,6 +907,10 @@
   document.getElementById('url-input').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') generateQR();
   });
+
+  // デフォルトURLをセットしてQRを即生成
+  document.getElementById('url-input').value = GITHUB_PAGES_URL;
+  generateQR(GITHUB_PAGES_URL);
 
   pollTunnelStatus();
   pollingTimer = setInterval(pollTunnelStatus, 1000);
@@ -1106,6 +1106,7 @@
       }
       togglePwForm(communityId);
       document.getElementById('pw-input-' + communityId).value = '';
+      loadCommunities();
     } catch (e) {
       errorEl.textContent = 'ネットワークエラーが発生しました';
       errorEl.style.display = 'block';
