@@ -12,3 +12,5 @@ services:
         sync: false
       - key: AWS_REGION
         value: ap-northeast-1
+      - key: ADMIN_PASSWORD
+        sync: false

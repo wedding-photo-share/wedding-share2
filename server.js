@@ -5,15 +5,32 @@ const { v4: uuidv4 } = require('uuid');
 const QRCode = require('qrcode');
 const { spawn } = require('child_process');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.use(express.json({ limit: '10kb' }));
 
-// セキュリティヘッダー
+// ── セキュリティヘッダー ──────────────────────────────────────
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  // HSTS（Renderは常にHTTPS）
+  if (process.env.RENDER) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  // Content Security Policy
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://*.amazonaws.com",
+    "connect-src 'self' https://*.amazonaws.com https://*.onrender.com",
+    "frame-ancestors 'none'",
+  ].join('; '));
   next();
 });
 
@@ -31,7 +48,58 @@ const ALLOWED_EXTENSIONS = new Set([
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif', '.bmp', '.tiff', '.tif',
 ]);
 
+// Presigned URL 有効期限
+const UPLOAD_URL_EXPIRY  = 5 * 60;   // アップロード用: 5分
+const VIEW_URL_EXPIRY    = 30 * 60;  // 表示・ダウンロード用: 30分
+
+// 写真一覧キャッシュ TTL（表示用 Presigned URL の有効期限より短く設定）
+const PHOTO_CACHE_TTL = 25 * 60 * 1000; // 25分
+
 const s3Client = new S3Client({ region: REGION });
+
+// ── レート制限 ──────────────────────────────────────────────
+// 全 API 共通: 1分間に100リクエストまで
+const generalLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'リクエストが多すぎます。しばらく待ってからお試しください。' },
+});
+
+// アップロード用 Presigned URL: 1分間に20枚まで
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'アップロードリクエストが多すぎます。しばらく待ってからお試しください。' },
+});
+
+app.use('/api/', generalLimiter);
+
+// ── 管理画面 Basic 認証 ──────────────────────────────────────
+function requireAdmin(req, res, next) {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  // 環境変数未設定時はローカル開発用にスルー
+  if (!adminPassword) return next();
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Basic ')) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Admin", charset="UTF-8"');
+    return res.status(401).send('管理画面へのアクセスには認証が必要です');
+  }
+
+  const credentials = Buffer.from(authHeader.slice(6), 'base64').toString('utf-8');
+  const colonIndex = credentials.indexOf(':');
+  const password = colonIndex >= 0 ? credentials.slice(colonIndex + 1) : '';
+
+  if (password !== adminPassword) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Admin", charset="UTF-8"');
+    return res.status(401).send('パスワードが間違っています');
+  }
+  next();
+}
 
 // トンネルURLを保持
 let tunnelUrl = null;
@@ -71,8 +139,8 @@ function startCloudflaredTunnel() {
   });
 
   // プロセス終了時にトンネルも終了
-  process.on('exit', () => cf.kill());
-  process.on('SIGINT', () => { cf.kill(); process.exit(0); });
+  process.on('exit', () => { try { cf.kill(); } catch (_) {} });
+  process.on('SIGINT', () => { try { cf.kill(); } catch (_) {} process.exit(0); });
 }
 
 // S3バケットにCORSを設定
@@ -82,8 +150,8 @@ async function configureBucketCors() {
     CORSConfiguration: {
       CORSRules: [
         {
-          AllowedHeaders: ['*'],
-          AllowedMethods: ['PUT', 'POST', 'GET'],
+          AllowedHeaders: ['Content-Type'],
+          AllowedMethods: ['PUT', 'GET'],
           AllowedOrigins: ['*'],
           ExposeHeaders: ['ETag'],
           MaxAgeSeconds: 3000,
@@ -106,12 +174,12 @@ app.get('/health', (req, res) => {
 });
 
 // トンネルURL取得エンドポイント（管理画面がポーリング）
-app.get('/api/tunnel-status', (req, res) => {
+app.get('/api/tunnel-status', requireAdmin, (req, res) => {
   res.json({ status: tunnelStatus, url: tunnelUrl });
 });
 
 // Presigned URL生成エンドポイント
-app.post('/api/presigned-url', async (req, res) => {
+app.post('/api/presigned-url', uploadLimiter, async (req, res) => {
   try {
     const { filename, contentType } = req.body;
     if (!filename || !contentType) {
@@ -135,7 +203,7 @@ app.post('/api/presigned-url', async (req, res) => {
       ContentType: contentType,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+    const url = await getSignedUrl(s3Client, command, { expiresIn: UPLOAD_URL_EXPIRY });
     res.json({ url, key });
   } catch (err) {
     console.error('Presigned URL生成エラー:', err);
@@ -143,29 +211,40 @@ app.post('/api/presigned-url', async (req, res) => {
   }
 });
 
-// QRコード生成エンドポイント
-app.get('/api/qrcode', async (req, res) => {
+// QRコード生成エンドポイント（管理画面専用）
+app.get('/api/qrcode', requireAdmin, async (req, res) => {
   try {
-    const baseUrl = req.query.url || tunnelUrl || `http://localhost:${PORT}`;
-    const qrDataUrl = await QRCode.toDataURL(baseUrl, {
+    const rawUrl = req.query.url || tunnelUrl || `http://localhost:${PORT}`;
+
+    // URLバリデーション（http / https のみ許可）
+    let validatedUrl;
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return res.status(400).json({ error: 'URLはhttp/httpsで始まる必要があります' });
+      }
+      validatedUrl = parsed.href;
+    } catch (_) {
+      return res.status(400).json({ error: '有効なURLを指定してください' });
+    }
+
+    const qrDataUrl = await QRCode.toDataURL(validatedUrl, {
       width: 300,
       margin: 2,
       color: { dark: '#1a1a2e', light: '#ffffff' },
     });
-    res.json({ qrcode: qrDataUrl, url: baseUrl });
+    res.json({ qrcode: qrDataUrl, url: validatedUrl });
   } catch (err) {
     res.status(500).json({ error: 'QRコード生成失敗' });
   }
 });
 
-// 写真一覧キャッシュ（presigned URLの有効期限3600秒に合わせ50分でキャッシュ）
-const PHOTO_CACHE_TTL = 50 * 60 * 1000;
+// 写真一覧キャッシュ
 let photoCache = null;
 let photoCacheTime = 0;
 
 // 写真一覧取得エンドポイント
 app.get('/api/photos', async (req, res) => {
-  // 新しい写真が追加された後も反映されるよう、強制更新クエリをサポート
   const forceRefresh = req.query.refresh === '1';
   const now = Date.now();
 
@@ -187,13 +266,13 @@ app.get('/api/photos', async (req, res) => {
       const viewUrl = await getSignedUrl(s3Client, new GetObjectCommand({
         Bucket: BUCKET_NAME,
         Key: obj.Key,
-      }), { expiresIn: 3600 });
+      }), { expiresIn: VIEW_URL_EXPIRY });
 
       const downloadUrl = await getSignedUrl(s3Client, new GetObjectCommand({
         Bucket: BUCKET_NAME,
         Key: obj.Key,
         ResponseContentDisposition: `attachment; filename="${path.basename(obj.Key)}"`,
-      }), { expiresIn: 3600 });
+      }), { expiresIn: VIEW_URL_EXPIRY });
 
       return {
         key: obj.Key,
@@ -227,7 +306,7 @@ app.get('/gallery', (req, res) => {
 });
 
 // 管理画面
-app.get('/admin', (req, res) => {
+app.get('/admin', requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
