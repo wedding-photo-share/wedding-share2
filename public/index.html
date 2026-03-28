@@ -468,6 +468,26 @@
       color: var(--muted);
       text-decoration: none;
     }
+
+    .footer-logout {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      padding: 4px 8px;
+    }
+
+    .btn-gallery {
+      background: var(--glass);
+      color: var(--muted);
+      border: 1.5px solid rgba(157, 114, 184, 0.3);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
@@ -487,7 +507,7 @@
   <div class="header-sub" id="user-name-display">読み込み中...</div>
   <div class="header-actions" id="header-actions">
     <button class="btn-sm btn-community" id="btn-community-gallery" style="display:none" onclick="location.href='/gallery/community?id=' + encodeURIComponent(window._communities[0]?.id || '')">コミュニティ写真</button>
-    <button class="btn-sm btn-logout" onclick="doLogout()">ログアウト</button>
+    <a href="/gallery" class="btn-sm btn-gallery">みんなの写真を見る</a>
   </div>
 </header>
 
@@ -543,7 +563,7 @@
 </main>
 
 <footer>
-  <a href="/gallery">みんなの写真を見る</a>
+  <button class="footer-logout" onclick="doLogout()">ログアウト</button>
 </footer>
 
 <script>
