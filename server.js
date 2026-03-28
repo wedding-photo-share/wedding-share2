@@ -293,6 +293,54 @@ app.get('/api/photos', async (req, res) => {
   }
 });
 
+// S3 使用量取得エンドポイント（管理画面専用）
+const S3_FREE_TIER_BYTES = 5 * 1024 * 1024 * 1024; // 5 GB
+const S3_PRICE_PER_GB    = 0.025;                   // USD/GB（ap-northeast-1）
+
+app.get('/api/s3-usage', requireAdmin, async (req, res) => {
+  try {
+    let totalBytes = 0;
+    let totalCount = 0;
+    let continuationToken = undefined;
+
+    // 1000件超でもすべて取得（ページネーション）
+    do {
+      const cmd = new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        Prefix: 'uploads/',
+        ContinuationToken: continuationToken,
+      });
+      const data = await s3Client.send(cmd);
+      const objects = (data.Contents || []).filter(obj => !obj.Key.endsWith('/'));
+      totalCount += objects.length;
+      totalBytes += objects.reduce((sum, obj) => sum + (obj.Size || 0), 0);
+      continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined;
+    } while (continuationToken);
+
+    const usedGB        = totalBytes / (1024 ** 3);
+    const freeTierGB    = S3_FREE_TIER_BYTES / (1024 ** 3);
+    const remainBytes   = Math.max(0, S3_FREE_TIER_BYTES - totalBytes);
+    const usedPct       = Math.min(100, (totalBytes / S3_FREE_TIER_BYTES) * 100);
+    const overBytes     = Math.max(0, totalBytes - S3_FREE_TIER_BYTES);
+    const estimatedCost = (overBytes / (1024 ** 3)) * S3_PRICE_PER_GB;
+
+    res.json({
+      totalBytes,
+      totalCount,
+      usedGB: Math.round(usedGB * 1000) / 1000,
+      freeTierGB,
+      remainBytes,
+      usedPct: Math.round(usedPct * 10) / 10,
+      overBytes,
+      estimatedCostUSD: Math.round(estimatedCost * 10000) / 10000,
+      isOverFreeTier: totalBytes > S3_FREE_TIER_BYTES,
+    });
+  } catch (err) {
+    console.error('S3使用量取得エラー:', err);
+    res.status(500).json({ error: 'S3使用量の取得に失敗しました' });
+  }
+});
+
 // 写真アップロード後にキャッシュを破棄
 app.post('/api/invalidate-cache', (req, res) => {
   photoCache = null;

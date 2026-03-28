@@ -210,6 +210,100 @@
       color: #4ade80;
       font-weight: 500;
     }
+
+    /* ── S3 使用量カード ──────────────── */
+    .usage-title {
+      font-size: 0.68rem;
+      color: #7b5ea0;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .usage-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 10px;
+    }
+
+    .usage-used {
+      font-size: 1.45rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a78bfa 0%, #f472b6 55%, #fb923c 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+
+    .usage-limit {
+      font-size: 0.76rem;
+      color: #7b5ea0;
+      font-weight: 400;
+    }
+
+    .usage-bar-wrap {
+      width: 100%;
+      height: 8px;
+      background: rgba(167,139,250,0.15);
+      border-radius: 50px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .usage-bar {
+      height: 100%;
+      border-radius: 50px;
+      transition: width 0.6s ease;
+      background: linear-gradient(90deg, #a78bfa, #f472b6, #fb923c);
+    }
+
+    .usage-bar.danger {
+      background: linear-gradient(90deg, #f87171, #ef4444);
+    }
+
+    .usage-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.74rem;
+      color: #9d72b8;
+      font-weight: 400;
+    }
+
+    .usage-remain {
+      color: #4ade80;
+      font-weight: 600;
+    }
+
+    .usage-remain.danger {
+      color: #f87171;
+    }
+
+    .usage-cost {
+      font-size: 0.72rem;
+      color: #f87171;
+      margin-top: 10px;
+      padding: 8px 12px;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 10px;
+      display: none;
+    }
+
+    .usage-photos {
+      font-size: 0.74rem;
+      color: #7b5ea0;
+      margin-top: 8px;
+    }
+
+    .usage-loading {
+      font-size: 0.8rem;
+      color: #7b5ea0;
+      text-align: center;
+      padding: 8px 0;
+    }
   </style>
 </head>
 <body>
@@ -233,6 +327,26 @@
     <div class="url-row">
       <input type="text" id="url-input" placeholder="トンネル起動待ち..." readonly />
       <button onclick="generateQR()">QR生成</button>
+    </div>
+  </div>
+
+  <!-- S3 使用量カード -->
+  <div class="card" id="usage-card">
+    <div class="usage-title">S3 ストレージ使用量</div>
+    <div class="usage-loading" id="usage-loading">読み込み中...</div>
+    <div id="usage-body" style="display:none">
+      <div class="usage-main">
+        <span class="usage-used" id="usage-used">0 MB</span>
+        <span class="usage-limit">無料枠 5 GB</span>
+      </div>
+      <div class="usage-bar-wrap">
+        <div class="usage-bar" id="usage-bar" style="width:0%"></div>
+      </div>
+      <div class="usage-meta">
+        <span class="usage-photos" id="usage-photos">0 枚</span>
+        <span class="usage-remain" id="usage-remain">残り 5.00 GB</span>
+      </div>
+      <div class="usage-cost" id="usage-cost"></div>
     </div>
   </div>
 
@@ -321,6 +435,52 @@
 
   pollTunnelStatus();
   pollingTimer = setInterval(pollTunnelStatus, 1000);
+
+  // ── S3 使用量 ──────────────────────────────
+  function formatBytes(bytes) {
+    if (bytes < 1024)             return bytes + ' B';
+    if (bytes < 1024 ** 2)        return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 ** 3)        return (bytes / 1024 ** 2).toFixed(1) + ' MB';
+    return (bytes / 1024 ** 3).toFixed(2) + ' GB';
+  }
+
+  async function loadS3Usage() {
+    try {
+      const res = await fetch('/api/s3-usage');
+      if (!res.ok) throw new Error('fetch failed');
+      const d = await res.json();
+
+      document.getElementById('usage-loading').style.display = 'none';
+      document.getElementById('usage-body').style.display    = 'block';
+
+      document.getElementById('usage-used').textContent    = formatBytes(d.totalBytes);
+      document.getElementById('usage-photos').textContent  = d.totalCount + ' 枚';
+
+      const bar = document.getElementById('usage-bar');
+      bar.style.width = d.usedPct + '%';
+
+      const remainEl = document.getElementById('usage-remain');
+      remainEl.textContent = '残り ' + formatBytes(d.remainBytes);
+
+      if (d.usedPct >= 80) {
+        bar.classList.add('danger');
+        remainEl.classList.add('danger');
+      }
+
+      const costEl = document.getElementById('usage-cost');
+      if (d.isOverFreeTier) {
+        costEl.style.display = 'block';
+        const overMB = (d.overBytes / 1024 ** 2).toFixed(1);
+        costEl.textContent =
+          `⚠ 無料枠を ${overMB} MB 超過しています。` +
+          `追加料金の目安: $${d.estimatedCostUSD.toFixed(4)} USD/月`;
+      }
+    } catch (e) {
+      document.getElementById('usage-loading').textContent = '取得に失敗しました';
+    }
+  }
+
+  loadS3Usage();
 </script>
 
 </body>
