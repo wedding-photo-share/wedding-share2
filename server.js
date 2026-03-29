@@ -23,7 +23,7 @@ app.use((req, res, next) => {
   }
   res.setHeader('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://*.amazonaws.com https://*.cloudfront.net",
@@ -69,7 +69,7 @@ const generalLimiter = rateLimit({
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 20,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'アップロードリクエストが多すぎます。しばらく待ってからお試しください。' },
@@ -504,9 +504,16 @@ app.get('/api/photos/community/:communityId', requireUser, async (req, res) => {
 // POST /api/presigned-url
 app.post('/api/presigned-url', uploadLimiter, requireUser, async (req, res) => {
   try {
-    const { filename, contentType, communityId } = req.body;
+    const { filename, contentType, communityId, fileSize } = req.body;
     if (!filename || !contentType) {
       return res.status(400).json({ error: 'filename と contentType が必要です' });
+    }
+
+    const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+    if (fileSize !== undefined) {
+      if (typeof fileSize !== 'number' || fileSize < 0 || fileSize > MAX_FILE_SIZE) {
+        return res.status(400).json({ error: 'ファイルサイズは20MB以下にしてください' });
+      }
     }
 
     if (!ALLOWED_CONTENT_TYPES.has(contentType.toLowerCase())) {

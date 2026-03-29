@@ -492,21 +492,11 @@
 </head>
 <body>
 
-<script>
-  // 認証チェック（先頭で実行）
-  (function() {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      location.replace('/login?redirect=' + encodeURIComponent(location.pathname + location.search));
-    }
-  })();
-</script>
-
 <header>
   <h1>Wedding Photo Share</h1>
   <div class="header-sub" id="user-name-display">読み込み中...</div>
   <div class="header-actions" id="header-actions">
-    <button class="btn-sm btn-community" id="btn-community-gallery" style="display:none" onclick="location.href='/gallery/community?id=' + encodeURIComponent(window._communities[0]?.id || '')">コミュニティ写真</button>
+    <button class="btn-sm btn-community" id="btn-community-gallery" style="display:none">コミュニティ写真</button>
     <a href="/gallery" class="btn-sm btn-gallery">みんなの写真を見る</a>
   </div>
 </header>
@@ -517,14 +507,14 @@
     <div class="dest-selector" id="dest-selector" style="display:none">
       <div class="dest-label">投稿先</div>
       <div class="dest-options" id="dest-options">
-        <button class="dest-option selected" data-community-id="" onclick="selectDest(this)">
+        <button class="dest-option selected" data-community-id="">
           <div class="dest-radio"></div>
           <span>🌸 全員に公開</span>
         </button>
       </div>
     </div>
 
-    <div class="drop-area" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-area">
       <div class="camera-ring">
         <svg viewBox="0 0 24 24">
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -557,255 +547,15 @@
     </div>
     <h2>Thank you!</h2>
     <p>素敵な写真をありがとうございます ✨</p>
-    <button id="again-btn" onclick="resetPage()">続けて送る</button>
+    <button id="again-btn">続けて送る</button>
     <a href="/gallery" class="gallery-link-small">みんなの写真を見る →</a>
   </div>
 </main>
 
 <footer>
-  <button class="footer-logout" onclick="doLogout()">ログアウト</button>
+  <button class="footer-logout">ログアウト</button>
 </footer>
 
-<script>
-  // authFetch: 401時に自動ログアウト
-  async function authFetch(url, options = {}) {
-    const token = localStorage.getItem('authToken');
-    const headers = {
-      ...(options.headers || {}),
-      'Authorization': 'Bearer ' + token,
-    };
-    const res = await fetch(url, { ...options, headers });
-    if (res.status === 401) {
-      localStorage.removeItem('authToken');
-      location.replace('/login?redirect=' + encodeURIComponent(location.pathname + location.search));
-      throw new Error('認証エラー');
-    }
-    return res;
-  }
-
-  function doLogout() {
-    localStorage.removeItem('authToken');
-    location.replace('/login');
-  }
-
-  window._communities = [];
-  let selectedCommunityId = null; // null = 公開
-
-  // ページロード時に認証情報取得
-  async function initPage() {
-    try {
-      const res = await authFetch('/api/auth/me');
-      const data = await res.json();
-      const user = data.user;
-
-      document.getElementById('user-name-display').textContent = user.nickname + ' さん、おかえりなさい';
-
-      if (user.communities && user.communities.length > 0) {
-        window._communities = user.communities;
-
-        // コミュニティ写真ボタン表示（コミュニティがある場合のみ）
-        document.getElementById('btn-community-gallery').style.display = 'inline-block';
-
-        // 投稿先セレクター構築
-        const destOptions = document.getElementById('dest-options');
-        const destSelector = document.getElementById('dest-selector');
-
-        // コミュニティオプション追加
-        user.communities.forEach(community => {
-          const btn = document.createElement('button');
-          btn.className = 'dest-option';
-          btn.dataset.communityId = community.id;
-          btn.onclick = function() { selectDest(this); };
-          btn.innerHTML = `<div class="dest-radio"></div><span>🔒 ${community.name} だけに共有</span>`;
-          destOptions.appendChild(btn);
-        });
-
-        destSelector.style.display = 'block';
-
-        // URLパラメータで指定されたコミュニティを自動選択
-        if (window._preselectedCommunityId) {
-          const targetBtn = document.querySelector(`.dest-option[data-community-id="${window._preselectedCommunityId}"]`);
-          if (targetBtn) selectDest(targetBtn);
-        }
-      }
-    } catch (err) {
-      if (err.message !== '認証エラー') {
-        document.getElementById('user-name-display').textContent = '';
-      }
-    }
-  }
-
-  function selectDest(btn) {
-    document.querySelectorAll('.dest-option').forEach(el => {
-      el.classList.remove('selected', 'selected-community');
-    });
-    const communityId = btn.dataset.communityId;
-    selectedCommunityId = communityId || null;
-    if (communityId) {
-      btn.classList.add('selected-community');
-    } else {
-      btn.classList.add('selected');
-    }
-  }
-
-  // URLパラメータからcommunityIdを読んで投稿先を自動選択
-  (function() {
-    const urlParams = new URLSearchParams(location.search);
-    const preselectedCommunityId = urlParams.get('communityId');
-    if (preselectedCommunityId) {
-      window._preselectedCommunityId = preselectedCommunityId;
-    }
-  })();
-
-  initPage();
-
-  // ── アップロード処理 ──────────────────────────────────────────
-
-  const fileInput = document.getElementById('fileInput');
-  const previewSection = document.getElementById('preview-section');
-  const previewGrid = document.getElementById('preview-grid');
-  const previewCount = document.getElementById('preview-count');
-  const uploadBtn = document.getElementById('upload-btn');
-  const progressSection = document.getElementById('progress-section');
-  const progressBar = document.getElementById('progress-bar');
-  const progressText = document.getElementById('progress-text');
-  const successSection = document.getElementById('success-section');
-  const uploadSection = document.getElementById('upload-section');
-
-  let selectedFiles = [];
-
-  fileInput.addEventListener('change', (e) => {
-    const newFiles = Array.from(e.target.files);
-    selectedFiles = [...selectedFiles, ...newFiles];
-    renderPreviews();
-    fileInput.value = '';
-  });
-
-  function renderPreviews() {
-    previewGrid.innerHTML = '';
-    if (selectedFiles.length === 0) {
-      previewSection.style.display = 'none';
-      uploadBtn.style.display = 'none';
-      return;
-    }
-
-    previewSection.style.display = 'block';
-    uploadBtn.style.display = 'block';
-    previewCount.textContent = `選択中: ${selectedFiles.length} 枚`;
-
-    selectedFiles.forEach((file, index) => {
-      const item = document.createElement('div');
-      item.className = 'preview-item';
-      item.id = `preview-${index}`;
-
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-
-      const removeBtn = document.createElement('button');
-      removeBtn.className = 'remove-btn';
-      removeBtn.textContent = '×';
-      removeBtn.onclick = (e) => {
-        e.stopPropagation();
-        selectedFiles.splice(index, 1);
-        renderPreviews();
-      };
-
-      const overlay = document.createElement('div');
-      overlay.className = 'overlay';
-      const overlayIcon = document.createElement('span');
-      overlayIcon.className = 'overlay-icon';
-      overlay.appendChild(overlayIcon);
-
-      item.appendChild(img);
-      item.appendChild(removeBtn);
-      item.appendChild(overlay);
-      previewGrid.appendChild(item);
-    });
-  }
-
-  uploadBtn.addEventListener('click', async () => {
-    if (selectedFiles.length === 0) return;
-
-    uploadBtn.disabled = true;
-    progressSection.style.display = 'block';
-
-    let completed = 0;
-    let failed = 0;
-
-    for (let i = 0; i < selectedFiles.length; i++) {
-      const file = selectedFiles[i];
-      const item = document.getElementById(`preview-${i}`);
-      const overlay = item.querySelector('.overlay');
-      const overlayIcon = item.querySelector('.overlay-icon');
-
-      item.classList.add('uploading');
-      overlayIcon.textContent = '⏳';
-
-      try {
-        const body = { filename: file.name, contentType: file.type || 'image/jpeg' };
-        if (selectedCommunityId) {
-          body.communityId = selectedCommunityId;
-        }
-
-        const res = await authFetch('/api/presigned-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-
-        if (!res.ok) throw new Error('URL取得失敗');
-        const { url } = await res.json();
-
-        const uploadRes = await fetch(url, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type || 'image/jpeg' },
-        });
-
-        if (!uploadRes.ok) throw new Error('アップロード失敗');
-
-        item.classList.remove('uploading');
-        item.classList.add('done');
-        overlayIcon.textContent = '✓';
-        completed++;
-      } catch (err) {
-        if (err.message === '認証エラー') return;
-        item.classList.remove('uploading');
-        item.classList.add('error');
-        overlayIcon.textContent = '✗';
-        failed++;
-        console.error(err);
-      }
-
-      const progress = Math.round(((i + 1) / selectedFiles.length) * 100);
-      progressBar.style.width = progress + '%';
-      progressText.textContent = `${i + 1} / ${selectedFiles.length} 枚処理中...`;
-    }
-
-    progressText.textContent = `完了: ${completed} 枚成功${failed > 0 ? ` / ${failed} 枚失敗` : ''}`;
-
-    if (completed > 0) {
-      authFetch('/api/invalidate-cache', { method: 'POST' }).catch(() => {});
-    }
-
-    setTimeout(() => {
-      if (completed > 0) {
-        uploadSection.style.display = 'none';
-        successSection.style.display = 'block';
-      }
-      uploadBtn.disabled = false;
-    }, 800);
-  });
-
-  function resetPage() {
-    selectedFiles = [];
-    renderPreviews();
-    progressSection.style.display = 'none';
-    progressBar.style.width = '0%';
-    uploadSection.style.display = 'block';
-    successSection.style.display = 'none';
-  }
-</script>
-
+<script src="/js/index.js"></script>
 </body>
 </html>
