@@ -53,6 +53,22 @@ let photos = [];
 let currentPage = 0;
 let currentIndex = 0;
 
+// 表示するページ番号の配列を返す（省略は '...' で表現）
+function buildPageNumbers(current, total) {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i);
+  }
+  const pages = [];
+  pages.push(0);
+  if (current > 2) pages.push('...');
+  for (let i = Math.max(1, current - 1); i <= Math.min(total - 2, current + 1); i++) {
+    pages.push(i);
+  }
+  if (current < total - 3) pages.push('...');
+  pages.push(total - 1);
+  return pages;
+}
+
 function renderPage() {
   const start = currentPage * PAGE_SIZE;
   const pagePhotos = photos.slice(start, start + PAGE_SIZE);
@@ -89,9 +105,27 @@ function renderPage() {
   const pagination = document.getElementById('pagination');
   if (totalPages > 1) {
     pagination.style.display = 'flex';
-    document.getElementById('page-info').textContent = `${currentPage + 1} / ${totalPages} ページ`;
     document.getElementById('btn-prev-page').disabled = currentPage === 0;
     document.getElementById('btn-next-page').disabled = currentPage === totalPages - 1;
+
+    // ページ番号ボタン生成
+    const container = document.getElementById('page-numbers');
+    container.innerHTML = '';
+    const pages = buildPageNumbers(currentPage, totalPages);
+    pages.forEach(p => {
+      if (p === '...') {
+        const el = document.createElement('span');
+        el.className = 'ellipsis';
+        el.textContent = '…';
+        container.appendChild(el);
+      } else {
+        const btn = document.createElement('button');
+        btn.textContent = p + 1;
+        if (p === currentPage) btn.classList.add('active');
+        btn.addEventListener('click', () => { currentPage = p; renderPage(); });
+        container.appendChild(btn);
+      }
+    });
   } else {
     pagination.style.display = 'none';
   }

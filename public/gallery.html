@@ -327,12 +327,13 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 10px;
+      gap: 6px;
       padding: 20px 16px;
+      flex-wrap: wrap;
     }
 
     .pagination button {
-      padding: 8px 20px;
+      padding: 8px 14px;
       background: var(--glass);
       color: #7c3aed;
       border: 1.5px solid rgba(124, 58, 237, 0.3);
@@ -342,6 +343,13 @@
       font-weight: 600;
       cursor: pointer;
       transition: background 0.12s;
+      min-width: 40px;
+    }
+
+    .pagination button.active {
+      background: var(--grad);
+      color: #fff;
+      border-color: transparent;
     }
 
     .pagination button:disabled {
@@ -349,10 +357,11 @@
       cursor: default;
     }
 
-    .pagination span {
+    .pagination .ellipsis {
       font-size: 0.82rem;
       font-weight: 600;
       color: var(--muted);
+      padding: 0 4px;
     }
   </style>
 </head>
@@ -385,9 +394,9 @@
 </div>
 
 <div class="pagination" id="pagination" style="display:none">
-  <button id="btn-prev-page">‹ 前へ</button>
-  <span id="page-info"></span>
-  <button id="btn-next-page">次へ ›</button>
+  <button id="btn-prev-page">‹</button>
+  <div id="page-numbers"></div>
+  <button id="btn-next-page">›</button>
 </div>
 </div>
 
