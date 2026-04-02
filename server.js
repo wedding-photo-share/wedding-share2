@@ -592,10 +592,21 @@ app.post('/api/download-zip', requireUser, async (req, res) => {
     const archive = archiver('zip', { zlib: { level: 1 } });
     archive.pipe(res);
 
+    let totalBytes = 0;
     for (const key of keys) {
       const data = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+      totalBytes += data.ContentLength || 0;
       archive.append(data.Body, { name: path.basename(key) });
     }
+
+    archive.on('finish', () => {
+      readDownloadStats().then(stats => {
+        stats.totalDownloads = (stats.totalDownloads || 0) + keys.length;
+        stats.totalBytes     = (stats.totalBytes     || 0) + totalBytes;
+        stats.lastUpdated    = new Date().toISOString();
+        return writeDownloadStats(stats);
+      }).catch(() => {});
+    });
 
     archive.finalize();
   } catch (e) {
