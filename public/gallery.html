@@ -26,6 +26,12 @@
       background-attachment: fixed;
       min-height: 100vh;
       color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page-content {
+      flex: 1;
     }
 
     /* ── Header ─────────────────── */
@@ -315,6 +321,39 @@
     #lightbox-prev:hover, #lightbox-next:hover { background: rgba(255,255,255,0.18); }
     #lightbox-prev { left: 14px; }
     #lightbox-next { right: 14px; }
+
+    /* ── Pagination ──────────────── */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 20px 16px;
+    }
+
+    .pagination button {
+      padding: 8px 20px;
+      background: var(--glass);
+      color: #7c3aed;
+      border: 1.5px solid rgba(124, 58, 237, 0.3);
+      border-radius: 12px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+
+    .pagination button:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .pagination span {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -329,6 +368,7 @@
   </div>
 </header>
 
+<div class="page-content">
 <div id="loading">
   <div class="spinner"></div>
   読み込み中...
@@ -342,6 +382,13 @@
 
 <div class="grid-wrapper" id="grid-wrapper" style="display:none">
   <div id="photo-grid"></div>
+</div>
+
+<div class="pagination" id="pagination" style="display:none">
+  <button id="btn-prev-page">‹ 前へ</button>
+  <span id="page-info"></span>
+  <button id="btn-next-page">次へ ›</button>
+</div>
 </div>
 
 <div id="lightbox">
