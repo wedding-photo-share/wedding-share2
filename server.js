@@ -1,4 +1,5 @@
 const express = require('express');
+const archiver = require('archiver');
 const { S3Client, PutObjectCommand, PutBucketCorsCommand, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { v4: uuidv4 } = require('uuid');
@@ -568,6 +569,37 @@ app.post('/api/track-download', requireUser, async (req, res) => {
     res.json({ ok: true });
   } catch (_) {
     res.json({ ok: true });
+  }
+});
+
+// POST /api/download-zip
+app.post('/api/download-zip', requireUser, async (req, res) => {
+  try {
+    const { keys } = req.body;
+    if (!Array.isArray(keys) || keys.length === 0 || keys.length > 30) {
+      return res.status(400).json({ error: '無効なキーリストです（1〜30件）' });
+    }
+    const validKey = /^uploads\/[\w\-./]+$/;
+    for (const key of keys) {
+      if (typeof key !== 'string' || !validKey.test(key)) {
+        return res.status(400).json({ error: '無効なキーが含まれています' });
+      }
+    }
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', 'attachment; filename="wedding-photos.zip"');
+
+    const archive = archiver('zip', { zlib: { level: 1 } });
+    archive.pipe(res);
+
+    for (const key of keys) {
+      const data = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
+      archive.append(data.Body, { name: path.basename(key) });
+    }
+
+    archive.finalize();
+  } catch (e) {
+    if (!res.headersSent) res.status(500).json({ error: 'ZIPの生成に失敗しました' });
   }
 });
 

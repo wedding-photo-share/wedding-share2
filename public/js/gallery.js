@@ -53,7 +53,105 @@ let photos = [];
 let currentPage = 0;
 let currentIndex = 0;
 
-// 表示するページ番号の配列を返す（省略は '...' で表現）
+// ── 選択モード ───────────────────────────────────────────────
+let selectionMode = false;
+let selectedKeys = new Set();
+
+function enterSelectionMode() {
+  selectionMode = true;
+  document.getElementById('btn-select-mode').classList.add('active');
+  document.getElementById('selection-bar').classList.add('open');
+  document.getElementById('photo-grid').classList.add('selection-mode');
+  updateSelectionBar();
+}
+
+function exitSelectionMode() {
+  selectionMode = false;
+  selectedKeys.clear();
+  document.getElementById('btn-select-mode').classList.remove('active');
+  document.getElementById('selection-bar').classList.remove('open');
+  document.getElementById('photo-grid').classList.remove('selection-mode');
+  document.querySelectorAll('.photo-item.selected').forEach(el => el.classList.remove('selected'));
+}
+
+function togglePhotoSelection(item, key) {
+  if (selectedKeys.has(key)) {
+    selectedKeys.delete(key);
+    item.classList.remove('selected');
+  } else {
+    selectedKeys.add(key);
+    item.classList.add('selected');
+  }
+  updateSelectionBar();
+}
+
+function selectAllPage() {
+  const pagePhotos = photos.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const allSelected = pagePhotos.every(p => selectedKeys.has(p.key));
+  if (allSelected) {
+    // 全解除
+    pagePhotos.forEach(p => selectedKeys.delete(p.key));
+    document.querySelectorAll('.photo-item.selected').forEach(el => el.classList.remove('selected'));
+  } else {
+    // 全選択
+    document.querySelectorAll('.photo-item').forEach((item, i) => {
+      const key = pagePhotos[i]?.key;
+      if (key) {
+        selectedKeys.add(key);
+        item.classList.add('selected');
+      }
+    });
+  }
+  updateSelectionBar();
+}
+
+function updateSelectionBar() {
+  const count = selectedKeys.size;
+  document.getElementById('sel-count').textContent = `${count}枚選択中`;
+  document.getElementById('btn-dl-selected').disabled = count === 0;
+
+  const pagePhotos = photos.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+  const allSelected = pagePhotos.length > 0 && pagePhotos.every(p => selectedKeys.has(p.key));
+  document.getElementById('btn-sel-all').textContent = allSelected ? '全解除' : '全選択';
+}
+
+async function downloadSelected() {
+  const keys = Array.from(selectedKeys);
+  if (keys.length === 0) return;
+
+  const btn = document.getElementById('btn-dl-selected');
+  btn.disabled = true;
+  btn.textContent = '準備中...';
+
+  try {
+    const res = await authFetch('/api/download-zip', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keys }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error || 'ダウンロードに失敗しました');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'wedding-photos.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (_) {
+    alert('ダウンロードに失敗しました');
+  } finally {
+    btn.textContent = '⬇ ダウンロード';
+    updateSelectionBar();
+  }
+}
+
+// ── ページネーション ─────────────────────────────────────────
 function buildPageNumbers(current, total) {
   if (total <= 7) {
     return Array.from({ length: total }, (_, i) => i);
@@ -74,8 +172,13 @@ function renderPage() {
   const pagePhotos = photos.slice(start, start + PAGE_SIZE);
   const totalPages = Math.ceil(photos.length / PAGE_SIZE);
 
+  // ページ切替時に選択をリセット
+  selectedKeys.clear();
+  if (selectionMode) updateSelectionBar();
+
   const grid = document.getElementById('photo-grid');
   grid.innerHTML = '';
+  if (selectionMode) grid.classList.add('selection-mode');
 
   pagePhotos.forEach((photo, i) => {
     const item = document.createElement('div');
@@ -85,7 +188,16 @@ function renderPage() {
     img.src = photo.viewUrl;
     img.alt = photo.filename;
     img.loading = 'lazy';
-    img.addEventListener('click', () => openLightbox(i));
+
+    const overlay = document.createElement('div');
+    overlay.className = 'check-overlay';
+    const checkIcon = document.createElement('span');
+    checkIcon.className = 'check-icon';
+    checkIcon.textContent = '✓';
+    overlay.appendChild(checkIcon);
+
+    item.appendChild(img);
+    item.appendChild(overlay);
 
     const dlBtn = document.createElement('button');
     dlBtn.className = 'dl-btn';
@@ -93,11 +205,19 @@ function renderPage() {
     dlBtn.innerHTML = '⬇';
     dlBtn.addEventListener('click', (e) => {
       e.stopPropagation();
+      if (selectionMode) return;
       downloadPhoto(photo);
     });
-
-    item.appendChild(img);
     item.appendChild(dlBtn);
+
+    item.addEventListener('click', () => {
+      if (selectionMode) {
+        togglePhotoSelection(item, photo.key);
+      } else {
+        openLightbox(i);
+      }
+    });
+
     grid.appendChild(item);
   });
 
@@ -108,7 +228,6 @@ function renderPage() {
     document.getElementById('btn-prev-page').disabled = currentPage === 0;
     document.getElementById('btn-next-page').disabled = currentPage === totalPages - 1;
 
-    // ページ番号ボタン生成
     const container = document.getElementById('page-numbers');
     container.innerHTML = '';
     const pages = buildPageNumbers(currentPage, totalPages);
@@ -166,6 +285,7 @@ async function loadPhotos(forceRefresh = false) {
   renderPage();
 }
 
+// ── ライトボックス ───────────────────────────────────────────
 function openLightbox(pageRelativeIndex) {
   currentIndex = pageRelativeIndex;
   updateLightbox();
@@ -241,5 +361,11 @@ document.getElementById('btn-prev-page').addEventListener('click', () => {
 document.getElementById('btn-next-page').addEventListener('click', () => {
   if (currentPage < Math.ceil(photos.length / PAGE_SIZE) - 1) { currentPage++; renderPage(); }
 });
+document.getElementById('btn-select-mode').addEventListener('click', () => {
+  selectionMode ? exitSelectionMode() : enterSelectionMode();
+});
+document.getElementById('btn-sel-all').addEventListener('click', selectAllPage);
+document.getElementById('btn-dl-selected').addEventListener('click', downloadSelected);
+document.getElementById('btn-sel-cancel').addEventListener('click', exitSelectionMode);
 
 loadPhotos();
