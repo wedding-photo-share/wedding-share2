@@ -131,16 +131,25 @@
       transition: background 0.12s;
     }
 
-    .btn-logout {
-      padding: 8px 14px;
+    /* ── Footer ─────────────────── */
+    footer {
+      border-top: 1px solid var(--glass-border);
       background: var(--glass);
-      color: var(--muted);
-      border: 1.5px solid rgba(157, 114, 184, 0.3);
-      border-radius: 12px;
-      font-family: 'Poppins', sans-serif;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      text-align: center;
+      padding: 14px;
+    }
+
+    .footer-logout {
       font-size: 0.78rem;
       font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      border: none;
       cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      padding: 4px 8px;
     }
 
     /* ── Loading ─────────────────── */
@@ -333,10 +342,9 @@
   <h1 id="community-name">コミュニティ写真</h1>
   <p id="photo-count-header">読み込み中...</p>
   <div class="header-actions">
-    <a href="/gallery" class="btn-back">← 公開ギャラリーに戻る</a>
     <button class="btn-add" id="btn-add-photo">+ 写真を追加</button>
+    <a href="/gallery" class="btn-back">公開ギャラリー</a>
     <button class="btn-refresh">更新</button>
-    <button class="btn-logout">ログアウト</button>
   </div>
 </header>
 
@@ -365,6 +373,9 @@
   </div>
 </div>
 
+<footer>
+  <button class="footer-logout">ログアウト</button>
+</footer>
 <script src="/js/community-gallery.js"></script>
 </body>
 </html>

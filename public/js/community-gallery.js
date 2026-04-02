@@ -179,7 +179,7 @@ document.getElementById('lightbox').addEventListener('click', (e) => {
 
 // onclick属性の代替 addEventListener
 document.querySelector('.btn-refresh').addEventListener('click', () => loadPhotos(true));
-document.querySelector('.btn-logout').addEventListener('click', doLogout);
+document.querySelector('.footer-logout').addEventListener('click', doLogout);
 document.getElementById('lightbox-close').addEventListener('click', closeLightbox);
 document.getElementById('lightbox-prev').addEventListener('click', prevPhoto);
 document.getElementById('lightbox-next').addEventListener('click', nextPhoto);

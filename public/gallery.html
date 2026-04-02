@@ -115,17 +115,25 @@
       transition: background 0.12s;
     }
 
-    .btn-logout {
-      padding: 8px 14px;
+    /* ── Footer ─────────────────── */
+    footer {
+      border-top: 1px solid var(--glass-border);
       background: var(--glass);
-      color: var(--muted);
-      border: 1.5px solid rgba(157, 114, 184, 0.3);
-      border-radius: 12px;
-      font-family: 'Poppins', sans-serif;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      text-align: center;
+      padding: 14px;
+    }
+
+    .footer-logout {
       font-size: 0.8rem;
       font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      border: none;
       cursor: pointer;
-      transition: background 0.12s;
+      font-family: 'Poppins', sans-serif;
+      padding: 4px 8px;
     }
 
     /* ── Loading ─────────────────── */
@@ -318,7 +326,6 @@
     <a href="/" class="btn-upload">+ 写真を追加</a>
     <button class="btn-refresh">更新</button>
     <div id="community-btns"></div>
-    <button class="btn-logout">ログアウト</button>
   </div>
 </header>
 
@@ -347,6 +354,9 @@
   </div>
 </div>
 
+<footer>
+  <button class="footer-logout">ログアウト</button>
+</footer>
 <script src="/js/gallery.js"></script>
 </body>
 </html>
