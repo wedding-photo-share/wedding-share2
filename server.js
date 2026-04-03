@@ -194,6 +194,35 @@ async function requireUser(req, res, next) {
 // ── コミュニティ写真キャッシュ ────────────────────────────────
 const communityPhotoCache = new Map(); // communityId -> { photos, time }
 
+// ── ストレージ使用量キャッシュ ────────────────────────────────
+const STORAGE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024; // 10GB
+const STORAGE_CACHE_TTL   = 5 * 60 * 1000;            // 5分
+let storageCache     = null;
+let storageCacheTime = 0;
+
+async function getTotalStorageBytes() {
+  const now = Date.now();
+  if (storageCache !== null && (now - storageCacheTime) < STORAGE_CACHE_TTL) {
+    return storageCache;
+  }
+  let totalBytes = 0;
+  let continuationToken = undefined;
+  do {
+    const data = await s3Client.send(new ListObjectsV2Command({
+      Bucket: BUCKET_NAME,
+      Prefix: 'uploads/',
+      ContinuationToken: continuationToken,
+    }));
+    totalBytes += (data.Contents || [])
+      .filter(obj => !obj.Key.endsWith('/'))
+      .reduce((sum, obj) => sum + (obj.Size || 0), 0);
+    continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined;
+  } while (continuationToken);
+  storageCache = totalBytes;
+  storageCacheTime = now;
+  return totalBytes;
+}
+
 // ── 写真URLリスト生成ヘルパー ──────────────────────────────────
 async function buildPhotoList(objects) {
   return Promise.all(objects.map(async (obj) => {
@@ -517,6 +546,11 @@ app.post('/api/presigned-url', uploadLimiter, requireUser, async (req, res) => {
       }
     }
 
+    const totalStorage = await getTotalStorageBytes();
+    if (totalStorage >= STORAGE_LIMIT_BYTES) {
+      return res.status(403).json({ error: 'ストレージ上限（10GB）に達したため、写真のアップロードができません' });
+    }
+
     if (!ALLOWED_CONTENT_TYPES.has(contentType.toLowerCase())) {
       return res.status(400).json({ error: '画像ファイルのみアップロードできます' });
     }
@@ -628,7 +662,7 @@ app.post('/api/invalidate-cache', requireUser, (req, res) => {
 app.get('/api/admin/communities', requireAdmin, async (req, res) => {
   try {
     const { communities } = await readCommunities();
-    res.json({ communities: communities.map(c => ({ id: c.id, name: c.name, createdAt: c.createdAt })) });
+    res.json({ communities: communities.map(c => ({ id: c.id, name: c.name, passphrase: c.passphrase || null, createdAt: c.createdAt })) });
   } catch (err) {
     res.status(500).json({ error: 'コミュニティ一覧取得に失敗しました' });
   }
@@ -646,6 +680,7 @@ app.post('/api/admin/communities', requireAdmin, async (req, res) => {
     const community = {
       id: uuidv4(),
       name,
+      passphrase,
       passphraseHash: hashPassphrase(passphrase),
       createdAt: new Date().toISOString(),
     };
@@ -675,6 +710,7 @@ app.put('/api/admin/communities/:id', requireAdmin, async (req, res) => {
 
     if (passphrase) {
       if (typeof passphrase !== 'string' || passphrase.length > 100) return res.status(400).json({ error: '合言葉が長すぎます' });
+      community.passphrase = passphrase;
       community.passphraseHash = hashPassphrase(passphrase);
 
       // パスフレーズ変更時: メンバーのcommunityIds削除 + sessions全クリア

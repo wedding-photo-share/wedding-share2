@@ -191,7 +191,10 @@ uploadBtn.addEventListener('click', async () => {
         body: JSON.stringify(body),
       });
 
-      if (!res.ok) throw new Error('URL取得失敗');
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'URL取得失敗');
+      }
       const { url } = await res.json();
 
       const uploadRes = await fetch(url, {
@@ -208,6 +211,15 @@ uploadBtn.addEventListener('click', async () => {
       completed++;
     } catch (err) {
       if (err.message === '認証エラー') return;
+      if (err.message.includes('ストレージ上限')) {
+        item.classList.remove('uploading');
+        item.classList.add('error');
+        overlayIcon.textContent = '✗';
+        failed++;
+        showResult(completed, failed);
+        alert(err.message);
+        return;
+      }
       item.classList.remove('uploading');
       item.classList.add('error');
       overlayIcon.textContent = '✗';

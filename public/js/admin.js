@@ -188,7 +188,7 @@ async function loadCommunities() {
         <div class="community-row">
           <div class="community-info">
             <div class="community-name">${escapeHtml(c.name)}</div>
-            <div class="community-date">${formatDate(c.createdAt)}</div>
+            <div class="community-date">${c.passphrase ? '合言葉: ' + escapeHtml(c.passphrase) : '合言葉: 不明（再設定してください）'} ／ ${formatDate(c.createdAt)}</div>
           </div>
           <div class="row-actions">
             <button class="btn-edit-pw" data-id="${c.id}">合言葉変更</button>
