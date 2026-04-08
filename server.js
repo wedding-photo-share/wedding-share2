@@ -116,8 +116,10 @@ let commCacheTime = 0;
 const DATA_CACHE_TTL = 30 * 1000;
 
 // ── S3 上のデータファイル読み書き ──────────────────────────────
-const USERS_KEY = 'data/users.json';
+const USERS_KEY       = 'data/users.json';
 const COMMUNITIES_KEY = 'data/communities.json';
+const UPLOAD_LOG_KEY  = 'data/upload-log.json';
+const DOWNLOAD_LOG_KEY = 'data/download-log.json';
 
 async function readUsers() {
   const now = Date.now();
@@ -581,6 +583,16 @@ app.post('/api/presigned-url', uploadLimiter, requireUser, async (req, res) => {
     });
 
     const url = await getSignedUrl(s3Client, command, { expiresIn: UPLOAD_URL_EXPIRY });
+
+    appendLog(UPLOAD_LOG_KEY, {
+      ts: new Date().toISOString(),
+      userId: req.user.id,
+      nickname: req.user.nickname,
+      key,
+      communityId: communityId || null,
+      fileSize: fileSize || null,
+    }).catch(() => {});
+
     res.json({ url, key });
   } catch (err) {
     console.error('Presigned URL生成エラー:', err);
@@ -600,6 +612,16 @@ app.post('/api/track-download', requireUser, async (req, res) => {
     stats.totalBytes     = (stats.totalBytes     || 0) + size;
     stats.lastUpdated    = new Date().toISOString();
     await writeDownloadStats(stats);
+
+    appendLog(DOWNLOAD_LOG_KEY, {
+      ts: new Date().toISOString(),
+      userId: req.user.id,
+      nickname: req.user.nickname,
+      type: 'single',
+      key,
+      size,
+    }).catch(() => {});
+
     res.json({ ok: true });
   } catch (_) {
     res.json({ ok: true });
@@ -634,12 +656,21 @@ app.post('/api/download-zip', requireUser, async (req, res) => {
     }
 
     archive.on('finish', () => {
+      const logEntry = {
+        ts: new Date().toISOString(),
+        userId: req.user.id,
+        nickname: req.user.nickname,
+        type: 'zip',
+        keys,
+        totalSize: totalBytes,
+      };
       readDownloadStats().then(stats => {
         stats.totalDownloads = (stats.totalDownloads || 0) + keys.length;
         stats.totalBytes     = (stats.totalBytes     || 0) + totalBytes;
         stats.lastUpdated    = new Date().toISOString();
         return writeDownloadStats(stats);
       }).catch(() => {});
+      appendLog(DOWNLOAD_LOG_KEY, logEntry).catch(() => {});
     });
 
     archive.finalize();
@@ -795,6 +826,37 @@ app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'ユーザー削除に失敗しました' });
+  }
+});
+
+// ── アクティビティログ ────────────────────────────────────────
+async function appendLog(s3Key, entry) {
+  let entries = [];
+  try {
+    const data = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: s3Key }));
+    entries = JSON.parse(await data.Body.transformToString());
+  } catch (_) {}
+  entries.push(entry);
+  await s3Client.send(new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: s3Key,
+    Body: JSON.stringify(entries, null, 2),
+    ContentType: 'application/json',
+  }));
+}
+
+// GET /api/admin/activity-log
+app.get('/api/admin/activity-log', requireAdmin, async (req, res) => {
+  try {
+    const [uploadLog, downloadLog] = await Promise.all([
+      s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: UPLOAD_LOG_KEY }))
+        .then(d => d.Body.transformToString()).then(JSON.parse).catch(() => []),
+      s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: DOWNLOAD_LOG_KEY }))
+        .then(d => d.Body.transformToString()).then(JSON.parse).catch(() => []),
+    ]);
+    res.json({ uploads: uploadLog, downloads: downloadLog });
+  } catch (err) {
+    res.status(500).json({ error: 'ログ取得に失敗しました' });
   }
 });
 
