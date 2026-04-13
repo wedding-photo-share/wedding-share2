@@ -470,18 +470,21 @@ app.get('/api/photos', requireUser, async (req, res) => {
   }
 
   try {
-    // 旧パス uploads/ と新パス uploads/public/ の両方を取得
-    const [oldData, newData] = await Promise.all([
-      s3Client.send(new ListObjectsV2Command({ Bucket: BUCKET_NAME, Prefix: 'uploads/' })),
-      // ↑ uploads/ 全体を取得し、community/ を除外する
-    ]);
-
-    const allObjects = (oldData.Contents || []).filter(obj => {
-      if (obj.Key.endsWith('/')) return false;
-      // uploads/community/ は除外
-      if (obj.Key.startsWith('uploads/community/')) return false;
-      return true;
-    });
+    const allObjects = [];
+    let continuationToken;
+    do {
+      const data = await s3Client.send(new ListObjectsV2Command({
+        Bucket: BUCKET_NAME,
+        Prefix: 'uploads/',
+        ContinuationToken: continuationToken,
+      }));
+      for (const obj of (data.Contents || [])) {
+        if (obj.Key.endsWith('/')) continue;
+        if (obj.Key.startsWith('uploads/community/')) continue;
+        allObjects.push(obj);
+      }
+      continuationToken = data.IsTruncated ? data.NextContinuationToken : undefined;
+    } while (continuationToken);
 
     allObjects.sort((a, b) => b.LastModified - a.LastModified);
 

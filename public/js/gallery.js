@@ -223,10 +223,14 @@ function renderPage() {
 
   // ページネーション更新
   const pagination = document.getElementById('pagination');
+  const pageJump = document.getElementById('page-jump');
   if (totalPages > 1) {
     pagination.style.display = 'flex';
+    pageJump.style.display = 'flex';
     document.getElementById('btn-prev-page').disabled = currentPage === 0;
     document.getElementById('btn-next-page').disabled = currentPage === totalPages - 1;
+    document.getElementById('page-jump-input').value = currentPage + 1;
+    document.getElementById('page-jump-total').textContent = `/ ${totalPages} ページ`;
 
     const container = document.getElementById('page-numbers');
     container.innerHTML = '';
@@ -247,6 +251,7 @@ function renderPage() {
     });
   } else {
     pagination.style.display = 'none';
+    pageJump.style.display = 'none';
   }
 
   window.scrollTo(0, 0);
@@ -257,6 +262,7 @@ async function loadPhotos(forceRefresh = false) {
   document.getElementById('photo-grid').innerHTML = '';
   document.getElementById('grid-wrapper').style.display = 'none';
   document.getElementById('pagination').style.display = 'none';
+  document.getElementById('page-jump').style.display = 'none';
   document.getElementById('empty').style.display = 'none';
   document.getElementById('photo-count-header').textContent = '読み込み中...';
 
@@ -367,5 +373,18 @@ document.getElementById('btn-select-mode').addEventListener('click', () => {
 document.getElementById('btn-sel-all').addEventListener('click', selectAllPage);
 document.getElementById('btn-dl-selected').addEventListener('click', downloadSelected);
 document.getElementById('btn-sel-cancel').addEventListener('click', exitSelectionMode);
+
+function jumpToPage() {
+  const totalPages = Math.ceil(photos.length / PAGE_SIZE);
+  const val = parseInt(document.getElementById('page-jump-input').value, 10);
+  if (!isNaN(val) && val >= 1 && val <= totalPages) {
+    currentPage = val - 1;
+    renderPage();
+  }
+}
+document.getElementById('btn-page-jump').addEventListener('click', jumpToPage);
+document.getElementById('page-jump-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') jumpToPage();
+});
 
 loadPhotos();
